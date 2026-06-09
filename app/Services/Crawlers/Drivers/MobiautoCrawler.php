@@ -124,6 +124,8 @@ class MobiautoCrawler implements VehicleCrawlerInterface
         return new RawVehicleData(
             externalId: $id,
             source:     self::SOURCE,
+            brand:      $make,
+            model:      $modelName,
             title:      $title,
             price:      $rawPrice,
             km:         $rawKm,

@@ -20,6 +20,8 @@ class VehicleTransformerTest extends TestCase
         $rawData = [
             'external_id' => '12345',
             'source'      => 'mobiauto',
+            'brand'       => '  Honda  ',
+            'model'       => ' Civic  ',
             'title'       => "  Honda   \n Civic   Sport  ",
             'price'       => 'R$ 145.900,99',
             'km'          => '12.345 km',
@@ -32,6 +34,8 @@ class VehicleTransformerTest extends TestCase
         $this->assertEquals([
             'external_id'      => '12345',
             'source'           => 'mobiauto',
+            'brand'            => 'Honda',
+            'model'            => 'Civic',
             'title'            => 'Honda Civic Sport',
             'price'            => 145900.99,
             'km'               => 12345,
@@ -40,6 +44,7 @@ class VehicleTransformerTest extends TestCase
             'url'              => 'https://example.com/honda-civic-sport',
         ], $transformed);
     }
+
 
     public function test_it_handles_prices_without_cents(): void
     {

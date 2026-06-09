@@ -25,6 +25,8 @@ class VehicleRepositoryTest extends TestCase
         $transformedData = [
             'external_id'      => '77777',
             'source'           => 'mobiauto',
+            'brand'            => 'Chevrolet',
+            'model'            => 'Onix',
             'title'            => 'Chevrolet Onix',
             'price'            => 85000.00,
             'km'               => 10000,
@@ -39,6 +41,8 @@ class VehicleRepositoryTest extends TestCase
         $this->assertDatabaseHas('vehicles', [
             'id'          => $vehicle->id,
             'external_id' => '77777',
+            'brand'       => 'Chevrolet',
+            'model'       => 'Onix',
             'price'       => 85000.00,
         ]);
 
@@ -53,6 +57,8 @@ class VehicleRepositoryTest extends TestCase
         $transformedData = [
             'external_id'      => '77777',
             'source'           => 'mobiauto',
+            'brand'            => 'Chevrolet',
+            'model'            => 'Onix',
             'title'            => 'Chevrolet Onix',
             'price'            => 85000.00,
             'km'               => 10000,
@@ -75,4 +81,5 @@ class VehicleRepositoryTest extends TestCase
 
         $this->assertEquals(2, PriceHistory::where('vehicle_id', $vehicle1->id)->count());
     }
+
 }

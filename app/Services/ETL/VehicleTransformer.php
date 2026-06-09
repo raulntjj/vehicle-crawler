@@ -24,6 +24,8 @@ class VehicleTransformer implements VehicleTransformerInterface
         return [
             'external_id'      => $externalId,
             'source'           => $source,
+            'brand'            => trim($rawData['brand'] ?? ''),
+            'model'            => trim($rawData['model'] ?? ''),
             'title'            => $this->cleanTitle($rawData['title']),
             'price'            => $cleanPrice,
             'km'               => $cleanKm,

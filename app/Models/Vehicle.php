@@ -14,6 +14,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  *
  * @property int    $id
  * @property string $external_id
+ * @property string $brand         Marca do veículo (ex: 'Honda')
+ * @property string $model         Modelo do veículo (ex: 'Civic')
  * @property string $source        Portal de origem (ex: 'mobiauto', 'webmotors')
  * @property string $title
  * @property float  $price
@@ -31,6 +33,8 @@ class Vehicle extends Model
      */
     protected $fillable = [
         'external_id',
+        'brand',
+        'model',
         'source',
         'title',
         'price',
@@ -39,6 +43,7 @@ class Vehicle extends Model
         'year_model',
         'url',
     ];
+
 
     /**
      * Casting de atributos para tipos nativos do PHP.

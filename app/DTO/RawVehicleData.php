@@ -10,6 +10,8 @@ readonly class RawVehicleData
     public function __construct(
         public string $externalId,
         public string $source,
+        public string $brand,
+        public string $model,
         public string $title,
         public string $price,
         public string $km,
@@ -27,6 +29,8 @@ readonly class RawVehicleData
         return [
             'external_id' => $this->externalId,
             'source'      => $this->source,
+            'brand'       => $this->brand,
+            'model'       => $this->model,
             'title'       => $this->title,
             'price'       => $this->price,
             'km'          => $this->km,
@@ -45,6 +49,8 @@ readonly class RawVehicleData
         return new self(
             externalId: $data['external_id'],
             source:     $data['source'] ?? 'unknown',
+            brand:      $data['brand'] ?? '',
+            model:      $data['model'] ?? '',
             title:      $data['title'],
             price:      $data['price'],
             km:         $data['km'],
@@ -53,3 +59,4 @@ readonly class RawVehicleData
         );
     }
 }
+

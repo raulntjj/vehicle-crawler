@@ -18,19 +18,35 @@ return new class extends Migration
             $table->id();
 
             // Identificador único do anúncio na fonte (ex: ID do OLX, Webmotors, etc.)
-            $table->string('external_id')->unique();
+            $table->string('external_id');
+
+            // Marca e modelo separados para indexação e consultas eficientes
+            $table->string('brand');                    // Ex: "Honda"
+            $table->string('model');                    // Ex: "Civic"
 
             // Dados do anúncio (já transformados/limpos)
-            $table->string('title');                    // Ex: "Honda City Hatch EXL 1.5 Flex Aut."
-            $table->decimal('price', 12, 2);            // Ex: 95900.00
-            $table->integer('km');                      // Ex: 24500
-            $table->integer('year_fabrication');         // Ex: 2022
-            $table->integer('year_model');               // Ex: 2023
+            $table->string('title');                    // Ex: "Honda Civic EX 2.0 i-VTEC CVT"
+            $table->decimal('price', 12, 2);            // Ex: 134900.00
+            $table->integer('km');                      // Ex: 53008
+            $table->integer('year_fabrication');         // Ex: 2021
+            $table->integer('year_model');               // Ex: 2021
             $table->string('url');                       // URL original do anúncio
 
+            // Fonte de dados (ex: "mobiauto")
+            $table->string('source');
+
             $table->timestamps();
+
+            // Unicidade garantida pela combinação de ID Externo e Fonte
+            $table->unique(['external_id', 'source'], 'vehicles_external_id_source_unique');
+
+            // Índices de busca
+            $table->index('brand');
+            $table->index('model');
+            $table->index('source');
         });
     }
+
 
     public function down(): void
     {

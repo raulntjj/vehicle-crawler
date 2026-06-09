@@ -26,6 +26,8 @@ class VehicleETLServiceTest extends TestCase
         $rawData = [
             'external_id' => '12345',
             'source'      => 'mobiauto',
+            'brand'       => 'Honda',
+            'model'       => 'Civic',
             'title'       => '   Honda   Civic  2.0   ',
             'price'       => 'R$ 120.000,50',
             'km'          => '15.000 km',
@@ -38,6 +40,8 @@ class VehicleETLServiceTest extends TestCase
         $this->assertDatabaseHas('vehicles', [
             'external_id'      => '12345',
             'source'           => 'mobiauto',
+            'brand'            => 'Honda',
+            'model'            => 'Civic',
             'title'            => 'Honda Civic 2.0',
             'price'            => 120000.50,
             'km'               => 15000,
@@ -61,6 +65,8 @@ class VehicleETLServiceTest extends TestCase
         $rawData1 = [
             'external_id' => '12345',
             'source'      => 'mobiauto',
+            'brand'       => 'Honda',
+            'model'       => 'Civic',
             'title'       => 'Honda Civic 2.0',
             'price'       => 'R$ 120.000,00',
             'km'          => '15.000 km',
@@ -95,6 +101,8 @@ class VehicleETLServiceTest extends TestCase
         $rawData = [
             'external_id' => '12345',
             'source'      => 'mobiauto',
+            'brand'       => 'Honda',
+            'model'       => 'Civic',
             'title'       => 'Honda Civic 2.0',
             'price'       => 'R$ 120.000,00',
             'km'          => '15.000 km',
@@ -124,6 +132,8 @@ class VehicleETLServiceTest extends TestCase
         $rawData = [
             'external_id' => '99999',
             'source'      => 'mobiauto',
+            'brand'       => 'Toyota',
+            'model'       => 'Corolla',
             'title'       => 'Toyota Corolla',
             'price'       => 'R$ 130.000,00',
             'km'          => '5.000 km',
@@ -136,7 +146,10 @@ class VehicleETLServiceTest extends TestCase
 
         $this->assertDatabaseHas('vehicles', [
             'external_id' => '99999',
+            'brand'       => 'Toyota',
+            'model'       => 'Corolla',
             'price'       => 130000.00,
         ]);
     }
+
 }
