@@ -1,0 +1,119 @@
+###############################################################################
+# Vehicle Crawler ETL — Docker Compose
+# Serviços: crawler (app), worker, rabbitmq, postgres
+###############################################################################
+
+services:
+  # ---------------------------------------------------------------------------
+  # Crawler — Container PHP 8.3 com Laravel CLI
+  # Responsável por executar o comando `php artisan crawl:vehicles`
+  # ---------------------------------------------------------------------------
+  crawler:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: crawler
+    restart: unless-stopped
+    working_dir: /var/www/html
+    volumes:
+      - .:/var/www/html
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    environment:
+      - APP_ENV=local
+    # Mantém o container rodando para execução de comandos artisan
+    command: ["tail", "-f", "/dev/null"]
+    networks:
+      - crawlers-network
+
+  # ---------------------------------------------------------------------------
+  # Worker — Consome a fila etl-vehicles do RabbitMQ
+  # Container idêntico ao crawler, mas iniciado como queue worker
+  # ---------------------------------------------------------------------------
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: worker
+    restart: unless-stopped
+    working_dir: /var/www/html
+    volumes:
+      - .:/var/www/html
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      crawler:
+        condition: service_started
+    environment:
+      - APP_ENV=local
+    command: ["php", "artisan", "queue:work", "rabbitmq", "--queue=etl-vehicles", "--tries=3", "--timeout=60", "--sleep=3"]
+    networks:
+      - crawlers-network
+
+  # ---------------------------------------------------------------------------
+  # RabbitMQ — Broker de Mensageria
+  # Management UI disponível em http://localhost:15672 (guest/guest)
+  # ---------------------------------------------------------------------------
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: rabbitmq
+    restart: unless-stopped
+    ports:
+      - "5672:5672"    # AMQP
+      - "15672:15672"  # Management UI
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - crawlers-network
+
+  # ---------------------------------------------------------------------------
+  # PostgreSQL — Banco de Dados Relacional
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: web_crawlers
+      POSTGRES_USER: crawler
+      POSTGRES_PASSWORD: crawler_secret
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U crawler -d web_crawlers"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - crawlers-network
+
+# ---------------------------------------------------------------------------
+# Volumes persistentes
+# ---------------------------------------------------------------------------
+volumes:
+  rabbitmq_data:
+    driver: local
+  postgres_data:
+    driver: local
+
+# ---------------------------------------------------------------------------
+# Rede compartilhada
+# ---------------------------------------------------------------------------
+networks:
+  crawlers-network:
+    driver: bridge
