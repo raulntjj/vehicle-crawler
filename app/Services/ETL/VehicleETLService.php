@@ -1,0 +1,96 @@
+<?php
+
+namespace App\Services\ETL;
+
+use App\Models\PriceHistory;
+use App\Models\Vehicle;
+use Illuminate\Support\Facades\Log;
+
+/**
+ * Service para processamento ETL de veículos (Transform & Load).
+ */
+class VehicleETLService
+{
+    /**
+     * Executa o fluxo de ETL para os dados brutos de um veículo.
+     *
+     * @param array<string, string> $rawData
+     */
+    public function execute(array $rawData): void
+    {
+        $externalId = $rawData['external_id'];
+        $source     = $rawData['source'] ?? 'unknown';
+        $logContext = "[{$source}::{$externalId}]";
+
+        Log::info("[ETL] Processando: {$logContext}");
+
+        $cleanPrice = $this->parsePrice($rawData['price']);
+        $cleanKm    = $this->parseKm($rawData['km']);
+        [$yearFab, $yearModel] = $this->parseYear($rawData['year']);
+
+        $transformedData = [
+            'source'           => $source,
+            'title'            => $this->cleanTitle($rawData['title']),
+            'price'            => $cleanPrice,
+            'km'               => $cleanKm,
+            'year_fabrication' => $yearFab,
+            'year_model'       => $yearModel,
+            'url'              => trim($rawData['url']),
+        ];
+
+        $uniqueKey = ['external_id' => $externalId, 'source' => $source];
+        $existingVehicle = Vehicle::where($uniqueKey)->first();
+
+        $vehicle = Vehicle::updateOrCreate($uniqueKey, $transformedData);
+
+        $isNew = $existingVehicle === null;
+        $priceChanged = !$isNew && (float) $existingVehicle->price !== $cleanPrice;
+
+        if ($isNew || $priceChanged) {
+            PriceHistory::create([
+                'vehicle_id' => $vehicle->id,
+                'price'      => $cleanPrice,
+            ]);
+
+            $action = $isNew ? 'NOVO' : 'PREÇO ALTERADO';
+            Log::info("[ETL] [{$action}] Histórico registrado para {$logContext}: R$ {$cleanPrice}");
+        }
+
+        Log::info("[ETL] ✅ Processado com sucesso: {$logContext}");
+    }
+
+    private function cleanTitle(string $rawTitle): string
+    {
+        return preg_replace('/\s+/', ' ', trim($rawTitle));
+    }
+
+    private function parsePrice(string $rawPrice): float
+    {
+        $cleaned = preg_replace('/R\$\s*/', '', $rawPrice);
+        $cleaned = trim($cleaned);
+        $cleaned = str_replace('.', '', $cleaned);
+        $cleaned = str_replace(',', '.', $cleaned);
+
+        return (float) $cleaned;
+    }
+
+    private function parseKm(string $rawKm): int
+    {
+        $cleaned = preg_replace('/\s*km\s*/i', '', $rawKm);
+        $cleaned = str_replace('.', '', $cleaned);
+
+        return (int) trim($cleaned);
+    }
+
+    /**
+     * @return array{0: int, 1: int}
+     */
+    private function parseYear(string $rawYear): array
+    {
+        $parts = explode('/', trim($rawYear));
+        $yearFabrication = (int) trim($parts[0] ?? 0);
+        $yearModel       = (int) trim($parts[1] ?? $yearFabrication);
+
+        return [$yearFabrication, $yearModel];
+    }
+}
