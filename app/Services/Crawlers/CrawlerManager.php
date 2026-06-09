@@ -2,6 +2,8 @@
 
 namespace App\Services\Crawlers;
 
+use App\Services\Crawlers\Contracts\VehicleCrawlerInterface;
+use App\Services\Crawlers\Drivers\MobiautoCrawler;
 use InvalidArgumentException;
 
 /**
@@ -39,3 +41,4 @@ class CrawlerManager
         return app($this->drivers[$name]);
     }
 }
+

@@ -1,8 +1,9 @@
 <?php
 
-namespace App\Services\Crawlers;
+namespace App\Services\Crawlers\Drivers;
 
 use App\DTO\RawVehicleData;
+use App\Services\Crawlers\Contracts\VehicleCrawlerInterface;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;

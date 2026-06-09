@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services\Crawlers;
+namespace App\Services\Crawlers\Contracts;
 
 use App\DTO\RawVehicleData;
 
