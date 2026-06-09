@@ -26,23 +26,55 @@ class MobiautoCrawlerTest extends TestCase
 
     public function test_it_crawls_and_normalizes_data_successfully(): void
     {
-        Http::fake([
-            'api.mobiauto.com.br/*' => Http::response([
-                'models' => [
-                    [
-                        'id' => '20411',
-                        'makeName' => 'Honda',
-                        'name' => 'Civic',
-                        'modelYear' => 2022,
-                    ],
-                    [
-                        'id' => '21216',
-                        'brandName' => 'Toyota',
-                        'modelName' => 'Corolla',
-                        'modelYear' => 2023,
+        $mockJson = json_encode([
+            'props' => [
+                'pageProps' => [
+                    'deals' => [
+                        'results' => [
+                            [
+                                'id' => 28979369,
+                                'price' => 75990,
+                                'km' => 119300,
+                                'trim' => [
+                                    'name' => 'DX 1.5 (Flex)',
+                                    'productionYear' => 2019,
+                                    'make' => ['name' => 'Honda'],
+                                    'model' => ['name' => 'City', 'year' => 2019]
+                                ],
+                                'dealer' => [
+                                    'location' => [
+                                        'state' => 'MG',
+                                        'city' => 'Pedro Leopoldo'
+                                    ]
+                                ]
+                            ],
+                            [
+                                'id' => 29755717,
+                                'price' => 120000,
+                                'km' => 45000,
+                                'trim' => [
+                                    'name' => 'Touring 1.5 Turbo CVT',
+                                    'productionYear' => 2020,
+                                    'make' => ['name' => 'Honda'],
+                                    'model' => ['name' => 'Civic', 'year' => 2020]
+                                ],
+                                'dealer' => [
+                                    'location' => [
+                                        'state' => 'ES',
+                                        'city' => 'Linhares'
+                                    ]
+                                ]
+                            ]
+                        ]
                     ]
                 ]
-            ], 200)
+            ]
+        ]);
+
+        $mockHtml = "<html><body><script id=\"__NEXT_DATA__\" type=\"application/json\">{$mockJson}</script></body></html>";
+
+        Http::fake([
+            'www.mobiauto.com.br/comprar/carros/*' => Http::response($mockHtml, 200)
         ]);
 
         $results = $this->crawler->crawl('Honda');
@@ -50,48 +82,75 @@ class MobiautoCrawlerTest extends TestCase
         $this->assertCount(2, $results);
         $this->assertContainsOnlyInstancesOf(RawVehicleData::class, $results);
 
-        // First model asserts
-        $this->assertEquals('20411', $results[0]->externalId);
+        // First item asserts
+        $this->assertEquals('28979369', $results[0]->externalId);
         $this->assertEquals('mobiauto', $results[0]->source);
-        $this->assertEquals('Honda Civic', $results[0]->title);
-        $this->assertStringContainsString('R$', $results[0]->price);
-        $this->assertStringContainsString('km', $results[0]->km);
-        $this->assertStringContainsString('2022', $results[0]->year);
-        $this->assertEquals('https://www.mobiauto.com.br/carros/honda-civic/id-20411', $results[0]->url);
+        $this->assertEquals('Honda City DX 1.5 (Flex)', $results[0]->title);
+        $this->assertEquals('R$ 75.990,00', $results[0]->price);
+        $this->assertEquals('119.300 km', $results[0]->km);
+        $this->assertEquals('2019/2019', $results[0]->year);
+        $this->assertEquals(
+            'https://www.mobiauto.com.br/comprar/carros/mg-pedro-leopoldo/honda/city/2019/dx-15-flex/detalhes/28979369?page=detail',
+            $results[0]->url
+        );
 
-        // Second model asserts
-        $this->assertEquals('21216', $results[1]->externalId);
-        $this->assertEquals('Toyota Corolla', $results[1]->title);
-        $this->assertEquals('https://www.mobiauto.com.br/carros/toyota-corolla/id-21216', $results[1]->url);
+        // Second item asserts
+        $this->assertEquals('29755717', $results[1]->externalId);
+        $this->assertEquals('Honda Civic Touring 1.5 Turbo CVT', $results[1]->title);
+        $this->assertEquals('R$ 120.000,00', $results[1]->price);
+        $this->assertEquals('45.000 km', $results[1]->km);
+        $this->assertEquals('2020/2020', $results[1]->year);
+        $this->assertEquals(
+            'https://www.mobiauto.com.br/comprar/carros/es-linhares/honda/civic/2020/touring-15-turbo-cvt/detalhes/29755717?page=detail',
+            $results[1]->url
+        );
 
         Http::assertSent(function (Request $request) {
-            return $request->url() === 'https://api.mobiauto.com.br/search/api/vehicle/v1.0/open-search?keyword=Honda&vehicleType=CAR&isServer=true'
+            return $request->url() === 'https://www.mobiauto.com.br/comprar/carros/sp-sao-paulo/honda'
                 && $request->hasHeader('User-Agent');
         });
     }
 
-    public function test_it_ignores_models_without_id(): void
+    public function test_it_ignores_deals_without_id(): void
     {
-        Http::fake([
-            'api.mobiauto.com.br/*' => Http::response([
-                'models' => [
-                    [
-                        'makeName' => 'Honda',
-                        'name' => 'Civic',
-                    ],
-                    [
-                        'id' => '21216',
-                        'makeName' => 'Toyota',
-                        'name' => 'Corolla',
+        $mockJson = json_encode([
+            'props' => [
+                'pageProps' => [
+                    'deals' => [
+                        'results' => [
+                            [
+                                'price' => 75990,
+                                'trim' => [
+                                    'name' => 'DX 1.5 (Flex)',
+                                    'make' => ['name' => 'Honda'],
+                                    'model' => ['name' => 'City']
+                                ]
+                            ],
+                            [
+                                'id' => 29755717,
+                                'price' => 120000,
+                                'trim' => [
+                                    'name' => 'Touring 1.5 Turbo CVT',
+                                    'make' => ['name' => 'Honda'],
+                                    'model' => ['name' => 'Civic']
+                                ]
+                            ]
+                        ]
                     ]
                 ]
-            ], 200)
+            ]
+        ]);
+
+        $mockHtml = "<html><body><script id=\"__NEXT_DATA__\" type=\"application/json\">{$mockJson}</script></body></html>";
+
+        Http::fake([
+            'www.mobiauto.com.br/comprar/carros/*' => Http::response($mockHtml, 200)
         ]);
 
         $results = $this->crawler->crawl('Honda');
 
         $this->assertCount(1, $results);
-        $this->assertEquals('21216', $results[0]->externalId);
+        $this->assertEquals('29755717', $results[0]->externalId);
     }
 
     public function test_it_returns_empty_array_on_http_failure(): void
@@ -101,7 +160,7 @@ class MobiautoCrawlerTest extends TestCase
             ->withArgs(fn ($message, $context) => str_contains($message, 'Falha HTTP') && $context['status'] === 500);
 
         Http::fake([
-            'api.mobiauto.com.br/*' => Http::response([], 500)
+            'www.mobiauto.com.br/comprar/carros/*' => Http::response([], 500)
         ]);
 
         $results = $this->crawler->crawl('Honda');
@@ -116,7 +175,7 @@ class MobiautoCrawlerTest extends TestCase
             ->withArgs(fn ($message, $context) => str_contains($message, 'Falha de conexão') && $context['keyword'] === 'Honda');
 
         Http::fake([
-            'api.mobiauto.com.br/*' => fn () => throw new \Illuminate\Http\Client\ConnectionException('Connection timed out')
+            'www.mobiauto.com.br/comprar/carros/*' => fn () => throw new \Illuminate\Http\Client\ConnectionException('Connection timed out')
         ]);
 
         $results = $this->crawler->crawl('Honda');
@@ -124,3 +183,4 @@ class MobiautoCrawlerTest extends TestCase
         $this->assertEmpty($results);
     }
 }
+

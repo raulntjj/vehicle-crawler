@@ -14,16 +14,12 @@ use Illuminate\Support\Facades\Log;
 class MobiautoCrawler implements VehicleCrawlerInterface
 {
     private const SOURCE = 'mobiauto';
-    private const API_ENDPOINT = 'https://api.mobiauto.com.br/search/api/vehicle/v1.0/open-search';
+    private const BASE_URL = 'https://www.mobiauto.com.br/comprar/carros';
 
     private const HEADERS = [
-        'User-Agent'      => 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:149.0) Gecko/20100101 Firefox/149.0',
-        'Accept'          => 'application/json, text/plain, */*',
-        'Accept-Language' => 'en-US,en;q=0.9',
-        'Origin'          => 'https://www.mobiauto.com.br',
-        'Sec-Fetch-Site'  => 'same-site',
-        'Sec-Fetch-Mode'  => 'cors',
-        'Sec-Fetch-Dest'  => 'empty',
+        'User-Agent'      => 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:151.0) Gecko/20100101 Firefox/151.0',
+        'Accept'          => 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+        'Accept-Language' => 'en-US,en;q=0.5',
     ];
 
     /**
@@ -32,7 +28,7 @@ class MobiautoCrawler implements VehicleCrawlerInterface
     public function crawl(string $keyword): array
     {
         try {
-            $rawModels = $this->fetchRawModels($keyword);
+            $rawDeals = $this->fetchRawDeals($keyword);
         } catch (ConnectionException $e) {
             Log::error('[MobiautoCrawler] Falha de conexão', [
                 'keyword' => $keyword,
@@ -43,7 +39,7 @@ class MobiautoCrawler implements VehicleCrawlerInterface
         }
 
         return array_values(array_filter(
-            array_map(fn (array $model) => $this->normalize($model), $rawModels)
+            array_map(fn (array $deal) => $this->normalize($deal), $rawDeals)
         ));
     }
 
@@ -56,15 +52,16 @@ class MobiautoCrawler implements VehicleCrawlerInterface
      * @return array<int, array<string, mixed>>
      * @throws ConnectionException
      */
-    private function fetchRawModels(string $keyword): array
+    private function fetchRawDeals(string $keyword): array
     {
+        $location = config('crawler.default_location', 'sp-sao-paulo');
+        $slugBrand = str(strtolower($keyword))->slug()->value();
+        
+        $url = self::BASE_URL . "/{$location}/{$slugBrand}";
+
         $response = Http::withHeaders(self::HEADERS)
             ->timeout(15)
-            ->get(self::API_ENDPOINT, [
-                'keyword'     => $keyword,
-                'vehicleType' => 'CAR',
-                'isServer'    => 'true',
-            ]);
+            ->get($url);
 
         if ($response->failed()) {
             Log::warning('[MobiautoCrawler] Falha HTTP', [
@@ -75,60 +72,77 @@ class MobiautoCrawler implements VehicleCrawlerInterface
             return [];
         }
 
-        return $response->json('models') ?? [];
+        $html = $response->body();
+
+        if (!preg_match('/<script id="__NEXT_DATA__" type="application\/json">(.*?)<\/script>/', $html, $matches)) {
+            Log::warning('[MobiautoCrawler] __NEXT_DATA__ não encontrado na página', [
+                'keyword' => $keyword,
+                'url'     => $url,
+            ]);
+            return [];
+        }
+
+        $json = json_decode($matches[1], true);
+        
+        return $json['props']['pageProps']['deals']['results'] ?? [];
     }
 
-    private function normalize(array $model): ?RawVehicleData
+    private function normalize(array $deal): ?RawVehicleData
     {
-        $id = (string) ($model['id'] ?? '');
+        $id = (string) ($deal['id'] ?? '');
 
         if ($id === '') {
             return null;
         }
 
-        $make      = (string) ($model['makeName'] ?? $model['brandName'] ?? '');
-        $name      = (string) ($model['name'] ?? $model['modelName'] ?? 'Desconhecido');
-        $modelYear = isset($model['modelYear']) ? (int) $model['modelYear'] : null;
+        $make = (string) ($deal['trim']['make']['name'] ?? '');
+        $modelName = (string) ($deal['trim']['model']['name'] ?? '');
+        $versionName = (string) ($deal['trim']['name'] ?? '');
+        
+        // Ex: "Honda City DX 1.5 (Flex)"
+        $title = trim("{$make} {$modelName} {$versionName}");
 
-        [$yearFab, $yearModel, $rawPrice, $rawKm] = $this->buildSimulatedFields($id, $modelYear);
+        $price = isset($deal['price']) ? (float) $deal['price'] : null;
+        $rawPrice = $price !== null ? 'R$ ' . number_format($price, 2, ',', '.') : '';
+
+        $km = isset($deal['km']) ? (int) $deal['km'] : null;
+        $rawKm = $km !== null ? number_format($km, 0, ',', '.') . ' km' : '';
+
+        $yearFab = $deal['trim']['productionYear'] ?? null;
+        $yearModel = $deal['trim']['model']['year'] ?? null;
+        $rawYear = '';
+        if ($yearFab && $yearModel) {
+            $rawYear = "{$yearFab}/{$yearModel}";
+        } elseif ($yearFab) {
+            $rawYear = (string) $yearFab;
+        } elseif ($yearModel) {
+            $rawYear = (string) $yearModel;
+        }
+
+        $url = $this->buildCanonicalUrl($deal);
 
         return new RawVehicleData(
             externalId: $id,
             source:     self::SOURCE,
-            title:      trim("{$make} {$name}"),
+            title:      $title,
             price:      $rawPrice,
             km:         $rawKm,
-            year:       "{$yearFab}/{$yearModel}",
-            url:        $this->buildCanonicalUrl($make, $name, $id),
+            year:       $rawYear,
+            url:        $url,
         );
     }
 
-    /**
-     * Gera campos simulados com seed determinístico baseado no ID do modelo.
-     *
-     * @return array{0: int, 1: int, 2: string, 3: string}
-     */
-    private function buildSimulatedFields(string $id, ?int $modelYear): array
+    private function buildCanonicalUrl(array $deal): string
     {
-        $seed = abs(crc32($id));
+        $id = $deal['id'] ?? '';
+        $state = strtolower($deal['dealer']['location']['state'] ?? 'br');
+        $city = str(strtolower($deal['dealer']['location']['city'] ?? 'brasil'))->slug()->value();
+        $make = str(strtolower($deal['trim']['make']['name'] ?? ''))->slug()->value();
+        $model = str(strtolower($deal['trim']['model']['name'] ?? ''))->slug()->value();
+        $year = $deal['trim']['model']['year'] ?? $deal['trim']['productionYear'] ?? '0';
+        $version = str(strtolower($deal['trim']['name'] ?? ''))->slug()->value();
 
-        $price     = 45000 + ($seed % 155000);
-        $km        = 5000  + ($seed % 95000);
-        $yearModel = $modelYear ?? (2019 + ($seed % 6));
-        $yearFab   = $yearModel - ($seed % 2);
-
-        return [
-            $yearFab,
-            $yearModel,
-            'R$ ' . number_format($price, 2, ',', '.'),
-            number_format($km, 0, ',', '.') . ' km',
-        ];
-    }
-
-    private function buildCanonicalUrl(string $make, string $name, string $id): string
-    {
-        $slug = str(strtolower("{$make}-{$name}"))->slug()->value();
-
-        return "https://www.mobiauto.com.br/carros/{$slug}/id-{$id}";
+        return "https://www.mobiauto.com.br/comprar/carros/{$state}-{$city}/{$make}/{$model}/{$year}/{$version}/detalhes/{$id}?page=detail";
     }
 }
+
