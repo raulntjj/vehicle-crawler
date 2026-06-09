@@ -5,7 +5,7 @@
 
 services:
   # ---------------------------------------------------------------------------
-  # Crawler — Container PHP 8.3 com Laravel CLI
+  # Crawler — Container PHP 8.4 com Laravel CLI
   # Responsável por executar o comando `php artisan crawl:vehicles`
   # ---------------------------------------------------------------------------
   crawler:
@@ -64,8 +64,8 @@ services:
     container_name: rabbitmq
     restart: unless-stopped
     ports:
-      - "5672:5672"    # AMQP
-      - "15672:15672"  # Management UI
+      - "5672:5672" # AMQP
+      - "15672:15672" # Management UI
     environment:
       RABBITMQ_DEFAULT_USER: guest
       RABBITMQ_DEFAULT_PASS: guest
