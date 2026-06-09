@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  *
  * @property int    $id
  * @property string $external_id
+ * @property string $source        Portal de origem (ex: 'mobiauto', 'webmotors')
  * @property string $title
  * @property float  $price
  * @property int    $km
@@ -30,6 +31,7 @@ class Vehicle extends Model
      */
     protected $fillable = [
         'external_id',
+        'source',
         'title',
         'price',
         'km',

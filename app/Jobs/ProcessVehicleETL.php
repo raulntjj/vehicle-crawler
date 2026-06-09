@@ -16,14 +16,18 @@ use Illuminate\Support\Facades\Log;
  *
  * [TRANSFORM & LOAD] — Etapas 2 e 3 do pipeline ETL.
  *
- * Recebe os dados brutos de um anúncio de veículo (strings "sujas"),
- * executa a limpeza e transformação dos campos, e persiste no banco
- * de dados usando Eloquent.
+ * Processador central e ÚNICO do ecossistema de crawlers. Recebe o
+ * payload normalizado (Contrato Universal) de qualquer portal e executa:
  *
- * Se o veículo já existe (mesmo external_id) e o preço mudou,
- * registra a alteração na tabela de histórico de preços.
+ *  1. Transform — limpa e converte as strings brutas para os tipos corretos
+ *  2. Load      — persiste/atualiza via Eloquent e registra histórico de preços
+ *
+ * A unicidade de um veículo é definida pelo par (external_id + source),
+ * garantindo que IDs iguais de portais diferentes não colidam.
  *
  * Fila: etl-vehicles (RabbitMQ)
+ *
+ * @see CrawlMobiautoCommand Para o normalização do payload do Mobiauto.
  */
 class ProcessVehicleETL implements ShouldQueue
 {
@@ -62,9 +66,13 @@ class ProcessVehicleETL implements ShouldQueue
      */
     public function handle(): void
     {
+        // Chaves de identidade do payload
         $externalId = $this->rawData['external_id'];
+        $source     = $this->rawData['source'] ?? 'unknown';
 
-        Log::info("[ETL] Processando veículo: {$externalId}");
+        $logContext = "[{$source}::{$externalId}]";
+
+        Log::info("[ETL] Processando veículo: {$logContext}");
 
         // -----------------------------------------------------------------
         // TRANSFORM — Limpeza e conversão dos dados brutos
@@ -74,6 +82,7 @@ class ProcessVehicleETL implements ShouldQueue
         [$yearFab, $yearModel] = $this->parseYear($this->rawData['year']);
 
         $transformedData = [
+            'source'           => $source,
             'title'            => $this->cleanTitle($this->rawData['title']),
             'price'            => $cleanPrice,
             'km'               => $cleanKm,
@@ -82,20 +91,21 @@ class ProcessVehicleETL implements ShouldQueue
             'url'              => trim($this->rawData['url']),
         ];
 
-        Log::info("[ETL] Dados transformados para {$externalId}:", $transformedData);
+        Log::info("[ETL] Dados transformados para {$logContext}:", $transformedData);
 
         // -----------------------------------------------------------------
         // LOAD — Persistência no banco de dados
         // -----------------------------------------------------------------
 
+        // Chave composta: garante que o mesmo external_id de portais
+        // distintos não colida (ex: ID 123 da Mobiauto ≠ ID 123 da Webmotors)
+        $uniqueKey = ['external_id' => $externalId, 'source' => $source];
+
         // Busca o veículo existente para verificar mudança de preço
-        $existingVehicle = Vehicle::where('external_id', $externalId)->first();
+        $existingVehicle = Vehicle::where($uniqueKey)->first();
 
         // Cria ou atualiza o registro do veículo
-        $vehicle = Vehicle::updateOrCreate(
-            ['external_id' => $externalId],
-            $transformedData
-        );
+        $vehicle = Vehicle::updateOrCreate($uniqueKey, $transformedData);
 
         // -----------------------------------------------------------------
         // Histórico de Preços
@@ -104,8 +114,8 @@ class ProcessVehicleETL implements ShouldQueue
         // a) É um veículo novo (não existia antes)
         // b) O preço mudou em relação ao registro anterior
         // -----------------------------------------------------------------
-        $isNewVehicle  = $existingVehicle === null;
-        $priceChanged  = ! $isNewVehicle && (float) $existingVehicle->price !== $cleanPrice;
+        $isNewVehicle = $existingVehicle === null;
+        $priceChanged = ! $isNewVehicle && (float) $existingVehicle->price !== $cleanPrice;
 
         if ($isNewVehicle || $priceChanged) {
             PriceHistory::create([
@@ -114,12 +124,12 @@ class ProcessVehicleETL implements ShouldQueue
             ]);
 
             $action = $isNewVehicle ? 'NOVO' : 'PREÇO ALTERADO';
-            Log::info("[ETL] [{$action}] Histórico de preço registrado para {$externalId}: R\$ {$cleanPrice}");
+            Log::info("[ETL] [{$action}] Histórico registrado para {$logContext}: R\$ {$cleanPrice}");
         } else {
-            Log::info("[ETL] Preço inalterado para {$externalId}. Sem registro no histórico.");
+            Log::info("[ETL] Preço inalterado para {$logContext}. Sem registro no histórico.");
         }
 
-        Log::info("[ETL] ✅ Veículo {$externalId} processado com sucesso.");
+        Log::info("[ETL] ✅ Veículo {$logContext} processado com sucesso.");
     }
 
     // =========================================================================
