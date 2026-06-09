@@ -2,7 +2,7 @@
 
 namespace App\Jobs;
 
-use App\Services\ETL\VehicleETLService;
+use App\Services\ETL\Contracts\VehicleETLInterface;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -29,9 +29,9 @@ class ProcessVehicleETL implements ShouldQueue
     }
 
     /**
-     * Executa as etapas de Transform e Load usando o VehicleETLService.
+     * Executa as etapas de Transform e Load usando o VehicleETLInterface.
      */
-    public function handle(VehicleETLService $etlService): void
+    public function handle(VehicleETLInterface $etlService): void
     {
         $etlService->execute($this->rawData);
     }

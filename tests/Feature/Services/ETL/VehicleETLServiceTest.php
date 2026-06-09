@@ -5,7 +5,7 @@ namespace Tests\Feature\Services\ETL;
 use App\Jobs\ProcessVehicleETL;
 use App\Models\PriceHistory;
 use App\Models\Vehicle;
-use App\Services\ETL\VehicleETLService;
+use App\Services\ETL\Contracts\VehicleETLInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -13,12 +13,12 @@ class VehicleETLServiceTest extends TestCase
 {
     use RefreshDatabase;
 
-    private VehicleETLService $service;
+    private VehicleETLInterface $service;
 
     protected function setUp(): void
     {
         parent::setUp();
-        $this->service = new VehicleETLService();
+        $this->service = $this->app->make(VehicleETLInterface::class);
     }
 
     public function test_it_transforms_and_loads_raw_vehicle_data(): void
