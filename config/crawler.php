@@ -12,6 +12,7 @@ return [
     'brands' => [
         'Chevrolet',
         'Fiat',
+        'BYD',
         'Volkswagen',
         'Toyota',
         'Hyundai',
@@ -25,6 +26,10 @@ return [
         'Mitsubishi',
         'Caoa Chery',
         'Kia',
+        'BMW',
+        'Land Rover',
+        'Audi',
+        'Mercedes-Benz'
     ],
 
     /*
@@ -47,6 +52,6 @@ return [
     | as requisições de crawler. Ex: "sp-sao-paulo", "mg-belo-horizonte".
     |
     */
-    'default_location' => 'sp-sao-paulo',
+    'default_location' => 'mg-belo-horizonte',
 ];
 
