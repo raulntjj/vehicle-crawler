@@ -16,6 +16,11 @@ export interface Vehicle {
   url: string;
   source: string;
   price_history: PriceHistoryEntry[] | null;
+  images: string[] | null;
+  doors: number | null;
+  bodystyle: string | null;
+  fuel: string | null;
+  transmission: string | null;
   created_at: string;
   updated_at: string;
 }

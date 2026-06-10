@@ -32,6 +32,11 @@ class VehicleTransformer implements VehicleTransformerInterface
             'year_fabrication' => $yearFab,
             'year_model'       => $yearModel,
             'url'              => trim($rawData['url']),
+            'images'           => isset($rawData['images']) ? $rawData['images'] : null,
+            'doors'            => isset($rawData['doors']) ? (int) $rawData['doors'] : null,
+            'bodystyle'        => isset($rawData['bodystyle']) ? trim($rawData['bodystyle']) : null,
+            'fuel'             => isset($rawData['fuel']) ? trim($rawData['fuel']) : null,
+            'transmission'     => isset($rawData['transmission']) ? trim($rawData['transmission']) : null,
         ];
     }
 

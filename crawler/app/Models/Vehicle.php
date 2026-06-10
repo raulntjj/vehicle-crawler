@@ -42,6 +42,11 @@ class Vehicle extends Model
         'year_fabrication',
         'year_model',
         'url',
+        'images',
+        'doors',
+        'bodystyle',
+        'fuel',
+        'transmission',
     ];
 
 
@@ -57,6 +62,8 @@ class Vehicle extends Model
             'km'               => 'integer',
             'year_fabrication' => 'integer',
             'year_model'       => 'integer',
+            'doors'            => 'integer',
+            'images'           => 'array',
         ];
     }
 

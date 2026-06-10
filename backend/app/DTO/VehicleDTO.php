@@ -27,6 +27,11 @@ readonly class VehicleDTO
         public ?array $priceHistory,
         public string $createdAt,
         public string $updatedAt,
+        public ?array $images = null,
+        public ?int $doors = null,
+        public ?string $bodystyle = null,
+        public ?string $fuel = null,
+        public ?string $transmission = null,
     ) {}
 
     /**
@@ -56,6 +61,12 @@ readonly class VehicleDTO
                 : null,
             'created_at'       => $this->createdAt,
             'updated_at'       => $this->updatedAt,
+            'images'           => $this->images,
+            'image'            => !empty($this->images) ? $this->images[0] : null,
+            'doors'            => $this->doors,
+            'bodystyle'        => $this->bodystyle,
+            'fuel'             => $this->fuel,
+            'transmission'     => $this->transmission,
         ];
     }
 
@@ -91,6 +102,11 @@ readonly class VehicleDTO
             priceHistory:    $priceHistory,
             createdAt:       $model->created_at->toIso8601String(),
             updatedAt:       $model->updated_at->toIso8601String(),
+            images:          $model->images,
+            doors:           $model->doors,
+            bodystyle:       $model->bodystyle,
+            fuel:            $model->fuel,
+            transmission:    $model->transmission,
         );
     }
 }

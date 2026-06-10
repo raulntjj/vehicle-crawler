@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -100,6 +101,11 @@ function DialogSkeleton() {
 
 export function VehicleDetailDialog({ vehicleId, onClose }: VehicleDetailDialogProps) {
   const { data: vehicle, isLoading } = useVehicleDetail(vehicleId);
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
+
+  useEffect(() => {
+    setActiveImageIndex(0);
+  }, [vehicleId]);
 
   return (
     <Dialog open={vehicleId !== null} onOpenChange={(open) => !open && onClose()}>
@@ -116,9 +122,70 @@ export function VehicleDetailDialog({ vehicleId, onClose }: VehicleDetailDialogP
             </DialogHeader>
 
             <div className="space-y-5 mt-2">
+              {(() => {
+                const images = (vehicle.images || (vehicle.image ? [vehicle.image] : [])).filter(Boolean) as string[];
+                if (images.length === 0) return null;
+                const activeImage = images[activeImageIndex];
+
+                return (
+                  <div className="space-y-2">
+                    <div className="relative aspect-video w-full overflow-hidden rounded-lg bg-muted border border-border/10 group">
+                      <img
+                        src={activeImage}
+                        alt={vehicle.title}
+                        className="h-full w-full object-cover"
+                      />
+                      {images.length > 1 && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => setActiveImageIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1))}
+                            className="absolute left-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full bg-background/80 hover:bg-background border border-border/20 flex items-center justify-center text-foreground shadow-md transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+                            </svg>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setActiveImageIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1))}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full bg-background/80 hover:bg-background border border-border/20 flex items-center justify-center text-foreground shadow-md transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                            </svg>
+                          </button>
+                          <div className="absolute bottom-2 right-2 px-2 py-0.5 rounded bg-background/80 text-[10px] font-semibold border border-border/10">
+                            {activeImageIndex + 1} / {images.length}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                    {images.length > 1 && (
+                      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-thin scrollbar-thumb-border/50 scrollbar-track-transparent">
+                        {images.map((img, idx) => (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => setActiveImageIndex(idx)}
+                            className={`relative aspect-[4/3] w-16 shrink-0 overflow-hidden rounded border-2 transition-all ${
+                              idx === activeImageIndex
+                                ? "border-primary scale-95"
+                                : "border-border/30 hover:border-border/70"
+                            }`}
+                          >
+                            <img src={img} alt="" className="h-full w-full object-cover" />
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
               <p className="text-2xl font-bold text-foreground">{vehicle.price_formatted}</p>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 <div className="rounded-lg bg-muted/30 p-3">
                   <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">Ano</p>
                   <p className="text-sm font-semibold">{vehicle.year_formatted}</p>
@@ -128,10 +195,26 @@ export function VehicleDetailDialog({ vehicleId, onClose }: VehicleDetailDialogP
                   <p className="text-sm font-semibold">{vehicle.km_formatted}</p>
                 </div>
                 <div className="rounded-lg bg-muted/30 p-3">
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">Modelo</p>
-                  <p className="text-sm font-semibold">{vehicle.model}</p>
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">Câmbio</p>
+                  <p className="text-sm font-semibold capitalize">{vehicle.transmission || "Não informado"}</p>
                 </div>
                 <div className="rounded-lg bg-muted/30 p-3">
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">Carroceria</p>
+                  <p className="text-sm font-semibold capitalize">{vehicle.bodystyle || "Não informado"}</p>
+                </div>
+                <div className="rounded-lg bg-muted/30 p-3">
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">Combustível</p>
+                  <p className="text-sm font-semibold capitalize">{vehicle.fuel || "Não informado"}</p>
+                </div>
+                <div className="rounded-lg bg-muted/30 p-3">
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">Portas</p>
+                  <p className="text-sm font-semibold">{vehicle.doors ? `${vehicle.doors} Portas` : "Não informado"}</p>
+                </div>
+                <div className="rounded-lg bg-muted/30 p-3 col-span-2">
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">Modelo</p>
+                  <p className="text-sm font-semibold truncate">{vehicle.model}</p>
+                </div>
+                <div className="rounded-lg bg-muted/30 p-3 col-span-1">
                   <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">Portal</p>
                   <p className="text-sm font-semibold capitalize">{vehicle.source}</p>
                 </div>

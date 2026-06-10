@@ -86,7 +86,6 @@ class MobiautoCrawler implements VehicleCrawlerInterface
         }
 
         $json = json_decode($matches[1], true);
-        
         return $json['props']['pageProps']['deals']['results'] ?? [];
     }
 
@@ -124,16 +123,36 @@ class MobiautoCrawler implements VehicleCrawlerInterface
 
         $url = $this->buildCanonicalUrl($deal);
 
+        $imageUrls = [];
+        if (!empty($deal['images']) && is_array($deal['images'])) {
+            $sortedImages = collect($deal['images'])->sortBy('position')->all();
+            foreach ($sortedImages as $img) {
+                if (isset($img['imageId'])) {
+                    $imageUrls[] = $this->buildImageUrl($img['imageId']);
+                }
+            }
+        }
+
+        $doors = isset($deal['trim']['doors']) ? (int) $deal['trim']['doors'] : null;
+        $bodystyle = $deal['trim']['bodystyle']['name'] ?? null;
+        $fuel = $deal['trim']['fuel']['name'] ?? null;
+        $transmission = $deal['trim']['transmission']['name'] ?? null;
+
         return new RawVehicleData(
-            externalId: $id,
-            source:     self::SOURCE,
-            brand:      $make,
-            model:      $modelName,
-            title:      $title,
-            price:      $rawPrice,
-            km:         $rawKm,
-            year:       $rawYear,
-            url:        $url,
+            externalId:   $id,
+            source:       self::SOURCE,
+            brand:        $make,
+            model:        $modelName,
+            title:        $title,
+            price:        $rawPrice,
+            km:           $rawKm,
+            year:         $rawYear,
+            url:          $url,
+            images:       $imageUrls,
+            doors:        $doors,
+            bodystyle:    $bodystyle,
+            fuel:         $fuel,
+            transmission: $transmission,
         );
     }
 
@@ -148,6 +167,11 @@ class MobiautoCrawler implements VehicleCrawlerInterface
         $version = str(strtolower($deal['trim']['name'] ?? ''))->slug()->value();
 
         return "https://www.mobiauto.com.br/comprar/carros/{$state}-{$city}/{$make}/{$model}/{$year}/{$version}/detalhes/{$id}?page=detail";
+    }
+
+    private function buildImageUrl(int|string $imageId): string
+    {
+        return "https://image1.mobiauto.com.br/images/api/images/v1.0/{$imageId}/transform/fl_progressive,f_webp,q_70,w_800";
     }
 }
 
