@@ -79,6 +79,30 @@ services:
       - crawlers-network
 
   # ---------------------------------------------------------------------------
+  # Frontend — Next.js 16 (App Router)
+  # Disponível em http://localhost:3000
+  # Proxy interno aponta para o container "backend" na porta 8000
+  # ---------------------------------------------------------------------------
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        BACKEND_URL: http://backend:8000
+    container_name: frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    depends_on:
+      backend:
+        condition: service_started
+    environment:
+      - NODE_ENV=production
+      - BACKEND_URL=http://backend:8000
+    networks:
+      - crawlers-network
+
+  # ---------------------------------------------------------------------------
   # RabbitMQ — Broker de Mensageria
   # Management UI disponível em http://localhost:15672 (guest/guest)
   # ---------------------------------------------------------------------------
