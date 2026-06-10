@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Car } from "lucide-react";
 import { useFilterStore } from "@/store/useFilterStore";
 import { useVehicles } from "@/hooks/useVehicles";
 import { FilterSidebar } from "@/components/filters/filter-sidebar";
@@ -25,12 +26,7 @@ export function CatalogPage() {
           <div className="flex items-center gap-4 mb-4">
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary-foreground">
-                  <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2" />
-                  <circle cx="7" cy="17" r="2" />
-                  <path d="M9 17h6" />
-                  <circle cx="17" cy="17" r="2" />
-                </svg>
+                <Car className="w-4 h-4 text-primary-foreground" strokeWidth={2} />
               </div>
               <h1 className="text-lg font-bold tracking-tight">
                 <span className="text-primary">Auto</span>Catálogo

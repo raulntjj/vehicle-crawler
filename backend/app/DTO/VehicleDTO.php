@@ -62,7 +62,6 @@ readonly class VehicleDTO
             'created_at'       => $this->createdAt,
             'updated_at'       => $this->updatedAt,
             'images'           => $this->images,
-            'image'            => !empty($this->images) ? $this->images[0] : null,
             'doors'            => $this->doors,
             'bodystyle'        => $this->bodystyle,
             'fuel'             => $this->fuel,

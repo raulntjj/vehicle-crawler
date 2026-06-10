@@ -1,13 +1,23 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
+import { ExternalLink, ZoomIn, ZoomOut, X } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogPortal, DialogFooter } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { useVehicleDetail } from "@/hooks/useVehicleDetail";
 import type { PriceHistoryEntry } from "@/lib/types";
+
+// Componentes do Carrossel do Shadcn UI
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+  type CarouselApi,
+} from "@/components/ui/carousel";
 
 interface VehicleDetailDialogProps {
   vehicleId: number | null;
@@ -46,36 +56,38 @@ function PriceChart({ history }: { history: PriceHistoryEntry[] }) {
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2">
-        <span className="text-sm font-medium text-muted-foreground">Variação:</span>
-        <span className={`text-sm font-semibold ${isDown ? "text-green-400" : diff > 0 ? "text-red-400" : "text-muted-foreground"}`}>
+        <span className="text-xs sm:text-sm font-medium text-muted-foreground">Variação:</span>
+        <span className={`text-xs sm:text-sm font-semibold ${isDown ? "text-green-400" : diff > 0 ? "text-red-400" : "text-muted-foreground"}`}>
           {isDown ? "↓" : diff > 0 ? "↑" : "="}{" "}
           {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 }).format(Math.abs(diff))}
         </span>
       </div>
-      <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-24" preserveAspectRatio="none">
-        <defs>
-          <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={isDown ? "rgb(74, 222, 128)" : "rgb(248, 113, 113)"} stopOpacity="0.3" />
-            <stop offset="100%" stopColor={isDown ? "rgb(74, 222, 128)" : "rgb(248, 113, 113)"} stopOpacity="0" />
-          </linearGradient>
-        </defs>
-        <polygon
-          points={`0,${h} ${points.join(" ")} ${w},${h}`}
-          fill="url(#chartGrad)"
-        />
-        <polyline
-          points={points.join(" ")}
-          fill="none"
-          stroke={isDown ? "rgb(74, 222, 128)" : "rgb(248, 113, 113)"}
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          vectorEffect="non-scaling-stroke"
-        />
-      </svg>
-      <div className="space-y-1.5">
+      <div className="w-full overflow-hidden rounded-lg border border-border/10 bg-muted/10 p-2">
+        <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-20 sm:h-24" preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={isDown ? "rgb(74, 222, 128)" : "rgb(248, 113, 113)"} stopOpacity="0.3" />
+              <stop offset="100%" stopColor={isDown ? "rgb(74, 222, 128)" : "rgb(248, 113, 113)"} stopOpacity="0" />
+            </linearGradient>
+          </defs>
+          <polygon
+            points={`0,${h} ${points.join(" ")} ${w},${h}`}
+            fill="url(#chartGrad)"
+          />
+          <polyline
+            points={points.join(" ")}
+            fill="none"
+            stroke={isDown ? "rgb(74, 222, 128)" : "rgb(248, 113, 113)"}
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            vectorEffect="non-scaling-stroke"
+          />
+        </svg>
+      </div>
+      <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1 scrollbar-thin">
         {[...history].reverse().map((entry, i) => (
-          <div key={i} className="flex items-center justify-between text-sm">
+          <div key={i} className="flex items-center justify-between text-xs sm:text-sm py-0.5 border-b border-border/5 last:border-0">
             <span className="text-muted-foreground">{entry.date_formatted}</span>
             <span className="font-medium text-foreground">{entry.price_formatted}</span>
           </div>
@@ -96,153 +108,252 @@ function DialogSkeleton() {
       </div>
       <Skeleton className="h-32 w-full" />
     </div>
-  )
+  );
 }
 
 export function VehicleDetailDialog({ vehicleId, onClose }: VehicleDetailDialogProps) {
   const { data: vehicle, isLoading } = useVehicleDetail(vehicleId);
-  const [activeImageIndex, setActiveImageIndex] = useState(0);
+  
+  const [api, setApi] = useState<CarouselApi>();
+  const [current, setCurrent] = useState(0);
+  const [zoomImage, setZoomImage] = useState<string | null>(null);
+  const [isZoomed, setIsZoomed] = useState(false);
+
+  // Derivação de estado para evitar useEffects síncronos
+  const images = (vehicle?.images || []).filter(Boolean) as string[];
+
+  const [prevVehicleId, setPrevVehicleId] = useState(vehicleId);
+  if (vehicleId !== prevVehicleId) {
+    setPrevVehicleId(vehicleId);
+    setCurrent(0);
+  }
+
+  const [prevZoomImage, setPrevZoomImage] = useState(zoomImage);
+  if (zoomImage !== prevZoomImage) {
+    setPrevZoomImage(zoomImage);
+    setIsZoomed(false);
+  }
 
   useEffect(() => {
-    setActiveImageIndex(0);
-  }, [vehicleId]);
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && zoomImage) {
+        e.stopPropagation();
+        setZoomImage(null);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown, true);
+    return () => window.removeEventListener("keydown", handleKeyDown, true);
+  }, [zoomImage]);
+
+  useEffect(() => {
+    if (!api) return;
+    api.on("select", () => {
+      setCurrent(api.selectedScrollSnap());
+    });
+  }, [api]);
 
   return (
-    <Dialog open={vehicleId !== null} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[560px] bg-card border-border/50 max-h-[90vh] overflow-y-auto">
-        {isLoading ? <DialogSkeleton /> : vehicle ? (
+    <>
+      <Dialog open={vehicleId !== null} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent 
+        className="max-w-[95vw] sm:max-w-[640px] bg-card border-border/50 max-h-[85vh] sm:max-h-[90vh] flex flex-col p-0 overflow-hidden"
+        onPointerDownOutside={(e) => e.preventDefault()}
+        onEscapeKeyDown={(e) => e.preventDefault()}
+      >
+        {isLoading ? (
+          <div className="p-4 sm:p-6"><DialogSkeleton /></div>
+        ) : vehicle ? (
           <>
-            <DialogHeader>
+            <DialogHeader className="p-4 sm:p-6 pb-2 sm:pb-2 pr-10 shrink-0">
               <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-xs font-medium text-primary uppercase tracking-wider mb-1">{vehicle.brand}</p>
-                  <DialogTitle className="text-lg font-bold leading-snug">{vehicle.title}</DialogTitle>
+                <div className="min-w-0">
+                  <p className="text-[10px] sm:text-xs font-semibold text-primary uppercase tracking-wider mb-1">{vehicle.brand}</p>
+                  <DialogTitle className="text-base sm:text-lg font-bold leading-snug text-foreground break-words">{vehicle.title}</DialogTitle>
                 </div>
               </div>
             </DialogHeader>
 
-            <div className="space-y-5 mt-2">
-              {(() => {
-                const images = (vehicle.images || (vehicle.image ? [vehicle.image] : [])).filter(Boolean) as string[];
-                if (images.length === 0) return null;
-                const activeImage = images[activeImageIndex];
-
-                return (
-                  <div className="space-y-2">
-                    <div className="relative aspect-video w-full overflow-hidden rounded-lg bg-muted border border-border/10 group">
-                      <img
-                        src={activeImage}
-                        alt={vehicle.title}
-                        className="h-full w-full object-cover"
-                      />
-                      {images.length > 1 && (
-                        <>
-                          <button
-                            type="button"
-                            onClick={() => setActiveImageIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1))}
-                            className="absolute left-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full bg-background/80 hover:bg-background border border-border/20 flex items-center justify-center text-foreground shadow-md transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
+            <div className="flex-1 overflow-y-auto px-4 sm:px-6 pb-6 space-y-4 sm:space-y-5 scrollbar-thin">
+              
+              {/* Carrossel Shadcn utilizando tags img normais */}
+              {images.length > 0 && (
+                <div className="space-y-2 w-full min-w-0 group/gallery">
+                  <Carousel setApi={setApi} className="w-full">
+                    <CarouselContent>
+                      {images.map((img, idx) => (
+                        <CarouselItem key={idx}>
+                          <div 
+                            onClick={() => setZoomImage(img)}
+                            className="relative h-[185px] sm:h-[260px] w-full overflow-hidden rounded-lg bg-black/90 border border-border/10 select-none cursor-zoom-in group/zoom-container"
                           >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
-                            </svg>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setActiveImageIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1))}
-                            className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full bg-background/80 hover:bg-background border border-border/20 flex items-center justify-center text-foreground shadow-md transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
-                          >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-                            </svg>
-                          </button>
-                          <div className="absolute bottom-2 right-2 px-2 py-0.5 rounded bg-background/80 text-[10px] font-semibold border border-border/10">
-                            {activeImageIndex + 1} / {images.length}
+                            <img
+                              src={img}
+                              alt={`${vehicle.title} - Foto ${idx + 1}`}
+                              className="h-full w-full object-contain transition-transform duration-300 group-hover/zoom-container:scale-[1.02]"
+                              loading={idx === 0 ? "eager" : "lazy"}
+                            />
+                            <div className="absolute bottom-2 right-2 p-1.5 rounded-md bg-black/60 text-white opacity-0 group-hover/zoom-container:opacity-100 transition-opacity pointer-events-none">
+                              <ZoomIn className="h-4 w-4" />
+                            </div>
                           </div>
-                        </>
-                      )}
-                    </div>
+                        </CarouselItem>
+                      ))}
+                    </CarouselContent>
+
                     {images.length > 1 && (
-                      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-thin scrollbar-thumb-border/50 scrollbar-track-transparent">
-                        {images.map((img, idx) => (
-                          <button
-                            key={idx}
-                            type="button"
-                            onClick={() => setActiveImageIndex(idx)}
-                            className={`relative aspect-[4/3] w-16 shrink-0 overflow-hidden rounded border-2 transition-all ${
-                              idx === activeImageIndex
-                                ? "border-primary scale-95"
-                                : "border-border/30 hover:border-border/70"
-                            }`}
-                          >
-                            <img src={img} alt="" className="h-full w-full object-cover" />
-                          </button>
-                        ))}
-                      </div>
+                      <>
+                        <CarouselPrevious className="absolute left-2.5 top-1/2 -translate-y-1/2 h-8 w-8 bg-black/50 hover:bg-black/80 text-white border-white/10 opacity-80 sm:opacity-0 sm:group-hover/gallery:opacity-100 transition-opacity" />
+                        <CarouselNext className="absolute right-2.5 top-1/2 -translate-y-1/2 h-8 w-8 bg-black/50 hover:bg-black/80 text-white border-white/10 opacity-80 sm:opacity-0 sm:group-hover/gallery:opacity-100 transition-opacity" />
+                        
+                        <div className="absolute top-2.5 right-2.5 px-2 py-0.5 rounded bg-black/60 text-[9px] font-bold border border-white/10 text-white backdrop-blur-xs z-10 uppercase tracking-widest pointer-events-none">
+                          {current + 1} / {images.length}
+                        </div>
+                      </>
                     )}
-                  </div>
-                );
-              })()}
+                  </Carousel>
 
-              <p className="text-2xl font-bold text-foreground">{vehicle.price_formatted}</p>
+                  {/* Miniaturas */}
+                  {images.length > 1 && (
+                    <div className="flex gap-2 overflow-x-auto py-1 w-full max-w-full scrollbar-thin scrollbar-thumb-border/50 scrollbar-track-transparent">
+                      {images.map((img, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => api?.scrollTo(idx)}
+                          className={`relative aspect-[4/3] w-14 sm:w-16 shrink-0 overflow-hidden rounded-md border-2 transition-all ${
+                            idx === current
+                              ? "border-primary shadow-sm scale-102 ring-1 ring-primary/30"
+                              : "border-border/30 hover:border-border/80 opacity-80 hover:opacity-100"
+                          }`}
+                        >
+                          <img 
+                            src={img} 
+                            alt="" 
+                            className="h-full w-full object-cover" 
+                          />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
 
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                <div className="rounded-lg bg-muted/30 p-3">
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">Ano</p>
-                  <p className="text-sm font-semibold">{vehicle.year_formatted}</p>
+              <p className="text-xl sm:text-2xl font-bold text-foreground">{vehicle.price_formatted}</p>
+
+              {/* Grid de Especificações */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
+                <div className="rounded-lg bg-muted/20 border border-border/5 p-2.5 sm:p-3 min-w-0">
+                  <p className="text-[9px] sm:text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">Ano</p>
+                  <p className="text-xs sm:text-sm font-semibold truncate">{vehicle.year_formatted}</p>
                 </div>
-                <div className="rounded-lg bg-muted/30 p-3">
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">Quilometragem</p>
-                  <p className="text-sm font-semibold">{vehicle.km_formatted}</p>
+                <div className="rounded-lg bg-muted/20 border border-border/5 p-2.5 sm:p-3 min-w-0">
+                  <p className="text-[9px] sm:text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">Quilometragem</p>
+                  <p className="text-xs sm:text-sm font-semibold truncate">{vehicle.km_formatted}</p>
                 </div>
-                <div className="rounded-lg bg-muted/30 p-3">
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">Câmbio</p>
-                  <p className="text-sm font-semibold capitalize">{vehicle.transmission || "Não informado"}</p>
+                <div className="rounded-lg bg-muted/20 border border-border/5 p-2.5 sm:p-3 min-w-0">
+                  <p className="text-[9px] sm:text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">Câmbio</p>
+                  <p className="text-xs sm:text-sm font-semibold capitalize truncate">{vehicle.transmission || "Não informado"}</p>
                 </div>
-                <div className="rounded-lg bg-muted/30 p-3">
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">Carroceria</p>
-                  <p className="text-sm font-semibold capitalize">{vehicle.bodystyle || "Não informado"}</p>
+                <div className="rounded-lg bg-muted/20 border border-border/5 p-2.5 sm:p-3 min-w-0">
+                  <p className="text-[9px] sm:text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">Carroceria</p>
+                  <p className="text-xs sm:text-sm font-semibold capitalize truncate">{vehicle.bodystyle || "Não informado"}</p>
                 </div>
-                <div className="rounded-lg bg-muted/30 p-3">
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">Combustível</p>
-                  <p className="text-sm font-semibold capitalize">{vehicle.fuel || "Não informado"}</p>
+                <div className="rounded-lg bg-muted/20 border border-border/5 p-2.5 sm:p-3 min-w-0">
+                  <p className="text-[9px] sm:text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">Combustível</p>
+                  <p className="text-xs sm:text-sm font-semibold capitalize truncate">{vehicle.fuel || "Não informado"}</p>
                 </div>
-                <div className="rounded-lg bg-muted/30 p-3">
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">Portas</p>
-                  <p className="text-sm font-semibold">{vehicle.doors ? `${vehicle.doors} Portas` : "Não informado"}</p>
+                <div className="rounded-lg bg-muted/20 border border-border/5 p-2.5 sm:p-3 min-w-0">
+                  <p className="text-[9px] sm:text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">Portas</p>
+                  <p className="text-xs sm:text-sm font-semibold truncate">
+                    {vehicle.doors ? `${vehicle.doors} Portas` : "Não informado"}
+                  </p>
                 </div>
-                <div className="rounded-lg bg-muted/30 p-3 col-span-2">
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">Modelo</p>
-                  <p className="text-sm font-semibold truncate">{vehicle.model}</p>
+                <div className="rounded-lg bg-muted/20 border border-border/5 p-2.5 sm:p-3 col-span-2 min-w-0">
+                  <p className="text-[9px] sm:text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">Modelo</p>
+                  <p className="text-xs sm:text-sm font-semibold truncate">{vehicle.model}</p>
                 </div>
-                <div className="rounded-lg bg-muted/30 p-3 col-span-1">
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">Portal</p>
-                  <p className="text-sm font-semibold capitalize">{vehicle.source}</p>
+                <div className="rounded-lg bg-muted/20 border border-border/5 p-2.5 sm:p-3 col-span-1 min-w-0">
+                  <p className="text-[9px] sm:text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">Portal</p>
+                  <p className="text-xs sm:text-sm font-semibold capitalize truncate">{vehicle.source}</p>
                 </div>
               </div>
 
               <Separator className="bg-border/50" />
 
               <div>
-                <h4 className="text-sm font-semibold mb-3">Histórico de Preços</h4>
+                <h4 className="text-xs sm:text-sm font-semibold mb-3">Histórico de Preços</h4>
                 <PriceChart history={vehicle.price_history || []} />
               </div>
 
-              <Separator className="bg-border/50" />
+            </div>
 
-              <Button asChild className="w-full" size="lg">
+            <DialogFooter className="p-3 border-t border-border/50 flex justify-between bg-card">
+              <Button 
+                variant="outline" 
+                onClick={onClose} 
+                className="cursor-pointer"
+                size="sm"
+              >
+                Fechar
+              </Button>
+              <Button asChild className="cursor-pointer" size="sm">
                 <a href={vehicle.url} target="_blank" rel="noopener noreferrer">
                   Ver anúncio original
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="ml-2">
-                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-                    <polyline points="15 3 21 3 21 9" />
-                    <line x1="10" x2="21" y1="14" y2="3" />
-                  </svg>
+                  <ExternalLink className="ml-1.5 h-3.5 w-3.5 shrink-0" />
                 </a>
               </Button>
-            </div>
+            </DialogFooter>
           </>
         ) : null}
       </DialogContent>
-    </Dialog>
+
+      {/* Lightbox / Zoom da Imagem */}
+      {zoomImage && (
+        <DialogPortal>
+          <div 
+            className="fixed inset-0 z-[150] bg-black/95 flex flex-col justify-center items-center animate-fade-in pointer-events-auto"
+            onClick={() => setZoomImage(null)}
+          >
+            {/* Botões do Lightbox */}
+            <div className="absolute top-4 right-4 z-[160] flex gap-2" onClick={(e) => e.stopPropagation()}>
+              <button
+                type="button"
+                onClick={() => setIsZoomed(!isZoomed)}
+                className="rounded-full bg-white/10 hover:bg-white/20 p-2.5 text-white transition-all flex items-center justify-center border border-white/10 active:scale-95 cursor-pointer"
+                title={isZoomed ? "Reduzir" : "Ampliar"}
+              >
+                {isZoomed ? <ZoomOut className="h-5 w-5" /> : <ZoomIn className="h-5 w-5" />}
+              </button>
+              <button
+                type="button"
+                onClick={() => setZoomImage(null)}
+                className="rounded-full bg-white/10 hover:bg-white/20 p-2.5 text-white transition-all flex items-center justify-center border border-white/10 active:scale-95 cursor-pointer"
+                title="Fechar"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            
+            {/* Imagem Ampliada */}
+            <div className="w-full h-full flex items-center justify-center p-4 overflow-auto scrollbar-none">
+              <img
+                src={zoomImage}
+                alt="Visualização ampliada do veículo"
+                className={`object-contain rounded-md select-none transition-all duration-300 max-w-[90vw] max-h-[85vh] ${
+                  isZoomed 
+                    ? "scale-150 cursor-zoom-out shadow-2xl shadow-black/80" 
+                    : "scale-100 cursor-zoom-in hover:brightness-105"
+                }`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsZoomed(!isZoomed);
+                }}
+              />
+            </div>
+          </div>
+        </DialogPortal>
+      )}
+      </Dialog>
+    </>
   );
 }

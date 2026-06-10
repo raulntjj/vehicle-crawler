@@ -32,10 +32,17 @@ return new class extends Migration
             $table->integer('year_model');               // Ex: 2021
             $table->string('url');                       // URL original do anúncio
 
+            // Campos adicionais
+            $table->json('images')->nullable();
+            $table->integer('doors')->nullable();
+            $table->string('bodystyle')->nullable();
+            $table->string('fuel')->nullable();
+            $table->string('transmission')->nullable();
+
             // Fonte de dados (ex: "mobiauto")
             $table->string('source');
-
             $table->timestamps();
+
 
             // Unicidade garantida pela combinação de ID Externo e Fonte
             $table->unique(['external_id', 'source'], 'vehicles_external_id_source_unique');

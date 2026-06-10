@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { SlidersHorizontal } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { FilterSidebar } from "./filter-sidebar";
@@ -11,7 +12,8 @@ export function FilterSheet() {
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
-        <Button variant="outline" size="sm" className="lg:hidden border-border/50">
+        <Button variant="outline" size="sm" className="lg:hidden border-border/50 gap-2">
+          <SlidersHorizontal className="h-3.5 w-3.5" />
           Filtros
         </Button>
       </SheetTrigger>

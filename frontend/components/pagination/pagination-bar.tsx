@@ -1,5 +1,6 @@
 "use client";
 
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface PaginationBarProps {
@@ -36,9 +37,7 @@ export function PaginationBar({ currentPage, lastPage, onPageChange }: Paginatio
         onClick={() => onPageChange(currentPage - 1)}
         className="border-border/50 text-muted-foreground hover:text-foreground disabled:opacity-30"
       >
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="m15 18-6-6 6-6" />
-        </svg>
+        <ChevronLeft className="h-4 w-4" />
         <span className="hidden sm:inline ml-1">Anterior</span>
       </Button>
 
@@ -72,9 +71,7 @@ export function PaginationBar({ currentPage, lastPage, onPageChange }: Paginatio
         className="border-border/50 text-muted-foreground hover:text-foreground disabled:opacity-30"
       >
         <span className="hidden sm:inline mr-1">Próxima</span>
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="m9 18 6-6-6-6" />
-        </svg>
+        <ChevronRight className="h-4 w-4" />
       </Button>
     </nav>
   );

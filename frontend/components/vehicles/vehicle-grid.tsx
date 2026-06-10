@@ -1,5 +1,6 @@
 "use client";
 
+import { AlertCircle, SearchX } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { VehicleCard } from "./vehicle-card";
 import type { Vehicle } from "@/lib/types";
@@ -45,11 +46,7 @@ export function VehicleGrid({ vehicles, isLoading, isError, onSelectVehicle }: V
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
         <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center mb-4">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-destructive">
-            <circle cx="12" cy="12" r="10" />
-            <line x1="12" x2="12" y1="8" y2="12" />
-            <line x1="12" x2="12.01" y1="16" y2="16" />
-          </svg>
+          <AlertCircle className="w-6 h-6 text-destructive" />
         </div>
         <h3 className="text-lg font-semibold text-foreground mb-1">Erro ao carregar veículos</h3>
         <p className="text-sm text-muted-foreground max-w-sm">
@@ -63,11 +60,7 @@ export function VehicleGrid({ vehicles, isLoading, isError, onSelectVehicle }: V
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
         <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center mb-4">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-muted-foreground/60">
-            <circle cx="11" cy="11" r="8" />
-            <path d="m21 21-4.3-4.3" />
-            <path d="m8 11 6 0" />
-          </svg>
+          <SearchX className="w-6 h-6 text-muted-foreground/60" />
         </div>
         <h3 className="text-lg font-semibold text-foreground mb-1">Nenhum veículo encontrado</h3>
         <p className="text-sm text-muted-foreground max-w-sm">

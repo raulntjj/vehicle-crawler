@@ -35,6 +35,13 @@ return new class extends Migration
             // Fonte de dados (ex: "mobiauto")
             $table->string('source');
 
+            // Campos adicionais
+            $table->json('images')->nullable();
+            $table->integer('doors')->nullable();
+            $table->string('bodystyle')->nullable();
+            $table->string('fuel')->nullable();
+            $table->string('transmission')->nullable();
+
             $table->timestamps();
 
             // Unicidade garantida pela combinação de ID Externo e Fonte
