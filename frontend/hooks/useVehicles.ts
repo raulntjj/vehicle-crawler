@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useShallow } from "zustand/react/shallow";
 import api from "@/lib/api";
 import { useFilterStore } from "@/store/useFilterStore";
 import type { ApiResponse, Vehicle, PaginationMeta, PaginationLinks } from "@/lib/types";
@@ -10,7 +11,26 @@ interface VehiclesResponse {
 }
 
 export function useVehicles() {
-  const filters = useFilterStore();
+  // useShallow garante que o hook só re-renderiza quando os VALORES
+  // dos filtros mudam — não a cada update irrelevante do store.
+  const filters = useFilterStore(
+    useShallow((s) => ({
+      search: s.search,
+      brands: s.brands,
+      sources: s.sources,
+      model: s.model,
+      minPrice: s.minPrice,
+      maxPrice: s.maxPrice,
+      minKm: s.minKm,
+      maxKm: s.maxKm,
+      minYear: s.minYear,
+      maxYear: s.maxYear,
+      orderBy: s.orderBy,
+      orderDirection: s.orderDirection,
+      perPage: s.perPage,
+      page: s.page,
+    }))
+  );
 
   return useQuery({
     queryKey: [
@@ -48,9 +68,7 @@ export function useVehicles() {
       params.per_page = filters.perPage;
       params.page = filters.page;
 
-      const { data } = await api.get<ApiResponse<Vehicle[]>>("/vehicles", {
-        params,
-      });
+      const { data } = await api.get<ApiResponse<Vehicle[]>>("/vehicles", { params });
 
       return {
         vehicles: data.data,

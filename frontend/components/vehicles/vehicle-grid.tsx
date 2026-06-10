@@ -7,6 +7,7 @@ import type { Vehicle } from "@/lib/types";
 interface VehicleGridProps {
   vehicles: Vehicle[];
   isLoading: boolean;
+  isError?: boolean;
   onSelectVehicle: (id: number) => void;
 }
 
@@ -29,13 +30,31 @@ function CardSkeleton() {
   );
 }
 
-export function VehicleGrid({ vehicles, isLoading, onSelectVehicle }: VehicleGridProps) {
+export function VehicleGrid({ vehicles, isLoading, isError, onSelectVehicle }: VehicleGridProps) {
   if (isLoading) {
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
         {Array.from({ length: 9 }).map((_, i) => (
           <CardSkeleton key={i} />
         ))}
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-center">
+        <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center mb-4">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-destructive">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" x2="12" y1="8" y2="12" />
+            <line x1="12" x2="12.01" y1="16" y2="16" />
+          </svg>
+        </div>
+        <h3 className="text-lg font-semibold text-foreground mb-1">Erro ao carregar veículos</h3>
+        <p className="text-sm text-muted-foreground max-w-sm">
+          Não foi possível conectar ao servidor. Verifique se o backend está rodando e tente novamente.
+        </p>
       </div>
     );
   }

@@ -3,8 +3,7 @@ import type { NextConfig } from "next";
 const backendUrl = process.env.BACKEND_URL ?? "http://localhost:8080";
 
 const nextConfig: NextConfig = {
-  // Enables minimal standalone output for Docker — no full node_modules needed at runtime
-  output: "standalone",
+  allowedDevOrigins: ["127.0.0.1", "localhost"],
 
   async rewrites() {
     return [

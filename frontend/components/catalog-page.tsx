@@ -12,7 +12,7 @@ import { PaginationBar } from "@/components/pagination/pagination-bar";
 export function CatalogPage() {
   const [selectedVehicleId, setSelectedVehicleId] = useState<number | null>(null);
   const { setPage } = useFilterStore();
-  const { data, isLoading, isFetching } = useVehicles();
+  const { data, isLoading, isFetching, isError } = useVehicles();
 
   const vehicles = data?.vehicles ?? [];
   const meta = data?.meta;
@@ -57,6 +57,7 @@ export function CatalogPage() {
               <VehicleGrid
                 vehicles={vehicles}
                 isLoading={isLoading}
+                isError={isError}
                 onSelectVehicle={(id) => setSelectedVehicleId(id)}
               />
             </div>
