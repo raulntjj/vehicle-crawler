@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { NumericFormat } from "react-number-format";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Slider } from "@/components/ui/slider";
@@ -8,91 +9,79 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { Input } from "@/components/ui/input";
 import { useFilterStore } from "@/store/useFilterStore";
 import { useFilterMetadata } from "@/hooks/useFilterMetadata";
 
-function formatCurrency(value: number) {
-  return new Intl.NumberFormat("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-    maximumFractionDigits: 0,
-  }).format(value);
-}
-
-function formatKm(value: number) {
-  return new Intl.NumberFormat("pt-BR").format(value) + " km";
-}
+const INPUT_CLASS =
+  "h-8 w-full flex-1 rounded-md border border-border/50 bg-muted/20 px-2 text-center text-xs focus:outline-none focus:ring-1 focus:ring-ring";
 
 export function FilterSidebar() {
   const { data: metadata, isLoading } = useFilterMetadata();
   const store = useFilterStore();
 
-  // Local state for ranges to avoid store update on every slider drag
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 0]);
   const [kmRange, setKmRange] = useState<[number, number]>([0, 0]);
   const [yearRange, setYearRange] = useState<[number, number]>([0, 0]);
 
-  // Sync local range state when metadata loads
   useEffect(() => {
-    if (metadata) {
-      setPriceRange([
-        store.minPrice ?? metadata.ranges.price.min,
-        store.maxPrice ?? metadata.ranges.price.max,
-      ]);
-      setKmRange([
-        store.minKm ?? metadata.ranges.km.min,
-        store.maxKm ?? metadata.ranges.km.max,
-      ]);
-      setYearRange([
-        store.minYear ?? metadata.ranges.year.min,
-        store.maxYear ?? metadata.ranges.year.max,
-      ]);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [metadata]);
+    if (!metadata) return;
+    setPriceRange([
+      store.minPrice ?? metadata.ranges.price.min,
+      store.maxPrice ?? metadata.ranges.price.max,
+    ]);
+    setKmRange([
+      store.minKm ?? metadata.ranges.km.min,
+      store.maxKm ?? metadata.ranges.km.max,
+    ]);
+    setYearRange([
+      store.minYear ?? metadata.ranges.year.min,
+      store.maxYear ?? metadata.ranges.year.max,
+    ]);
+  }, [metadata, store.minPrice, store.maxPrice, store.minKm, store.maxKm, store.minYear, store.maxYear]);
 
-  const handlePriceCommit = useCallback(
-    (value: number[]) => {
+  const commitPrice = useCallback(
+    (min: number, max: number) => {
       if (!metadata) return;
-      const min = value[0] === metadata.ranges.price.min ? undefined : value[0];
-      const max = value[1] === metadata.ranges.price.max ? undefined : value[1];
-      store.setPriceRange(min, max);
+      store.setPriceRange(
+        min === metadata.ranges.price.min ? undefined : min,
+        max === metadata.ranges.price.max ? undefined : max,
+      );
     },
-    [metadata, store]
+    [metadata, store],
   );
 
-  const handleKmCommit = useCallback(
-    (value: number[]) => {
+  const commitKm = useCallback(
+    (min: number, max: number) => {
       if (!metadata) return;
-      const min = value[0] === metadata.ranges.km.min ? undefined : value[0];
-      const max = value[1] === metadata.ranges.km.max ? undefined : value[1];
-      store.setKmRange(min, max);
+      store.setKmRange(
+        min === metadata.ranges.km.min ? undefined : min,
+        max === metadata.ranges.km.max ? undefined : max,
+      );
     },
-    [metadata, store]
+    [metadata, store],
   );
 
-  const handleYearCommit = useCallback(
-    (value: number[]) => {
+  const commitYear = useCallback(
+    (min: number, max: number) => {
       if (!metadata) return;
-      const min = value[0] === metadata.ranges.year.min ? undefined : value[0];
-      const max = value[1] === metadata.ranges.year.max ? undefined : value[1];
-      store.setYearRange(min, max);
+      store.setYearRange(
+        min === metadata.ranges.year.min ? undefined : min,
+        max === metadata.ranges.year.max ? undefined : max,
+      );
     },
-    [metadata, store]
+    [metadata, store],
   );
 
   const handleReset = useCallback(() => {
     store.resetFilters();
-    if (metadata) {
-      setPriceRange([metadata.ranges.price.min, metadata.ranges.price.max]);
-      setKmRange([metadata.ranges.km.min, metadata.ranges.km.max]);
-      setYearRange([metadata.ranges.year.min, metadata.ranges.year.max]);
-    }
+    if (!metadata) return;
+    setPriceRange([metadata.ranges.price.min, metadata.ranges.price.max]);
+    setKmRange([metadata.ranges.km.min, metadata.ranges.km.max]);
+    setYearRange([metadata.ranges.year.min, metadata.ranges.year.max]);
   }, [store, metadata]);
 
-  const hasActiveFilters = useMemo(() => {
-    return (
+  const hasActiveFilters = useMemo(
+    () =>
       store.brands.length > 0 ||
       store.sources.length > 0 ||
       store.minPrice !== undefined ||
@@ -100,9 +89,9 @@ export function FilterSidebar() {
       store.minKm !== undefined ||
       store.maxKm !== undefined ||
       store.minYear !== undefined ||
-      store.maxYear !== undefined
-    );
-  }, [store.brands, store.sources, store.minPrice, store.maxPrice, store.minKm, store.maxKm, store.minYear, store.maxYear]);
+      store.maxYear !== undefined,
+    [store.brands, store.sources, store.minPrice, store.maxPrice, store.minKm, store.maxKm, store.minYear, store.maxYear],
+  );
 
   if (isLoading) {
     return (
@@ -147,20 +136,19 @@ export function FilterSidebar() {
           {/* ─── Brands ──────────────────────────────────────────── */}
           <AccordionItem value="brands" className="border-border/50">
             <AccordionTrigger className="text-sm font-medium py-3 hover:no-underline">
-              Marcas
-              {store.brands.length > 0 && (
-                <span className="ml-2 rounded-full bg-primary/20 px-2 py-0.5 text-[10px] font-semibold text-primary">
-                  {store.brands.length}
-                </span>
-              )}
+              <div className="flex">
+                Marcas
+                {store.brands.length > 0 && (
+                  <span className="ml-2 rounded-full bg-primary/20 px-2 py-0.5 text-[10px] font-semibold text-primary">
+                    {store.brands.length}
+                  </span>
+                )}
+              </div>
             </AccordionTrigger>
             <AccordionContent>
               <div className="space-y-2 pt-1">
                 {metadata.brands.map((brand) => (
-                  <label
-                    key={brand}
-                    className="flex items-center gap-2.5 cursor-pointer group"
-                  >
+                  <label key={brand} className="flex items-center gap-2.5 cursor-pointer group">
                     <Checkbox
                       checked={store.brands.includes(brand)}
                       onCheckedChange={() => store.toggleBrand(brand)}
@@ -188,22 +176,42 @@ export function FilterSidebar() {
                   step={1000}
                   value={priceRange}
                   onValueChange={(v) => setPriceRange(v as [number, number])}
-                  onValueCommit={handlePriceCommit}
+                  onValueCommit={(v) => commitPrice(v[0], v[1])}
                   className="w-full"
                 />
                 <div className="flex items-center gap-2">
-                  <Input
-                    type="text"
-                    value={formatCurrency(priceRange[0])}
-                    readOnly
-                    className="h-8 text-xs text-center bg-muted/50 border-border/50"
+                  <NumericFormat
+                    value={priceRange[0]}
+                    thousandSeparator="."
+                    decimalSeparator=","
+                    prefix="R$ "
+                    decimalScale={0}
+                    placeholder="Mínimo"
+                    onValueChange={({ floatValue }) => {
+                      if (floatValue == null) return;
+                      const clamped = Math.max(metadata.ranges.price.min, Math.min(floatValue, priceRange[1]));
+                      setPriceRange([clamped, priceRange[1]]);
+                    }}
+                    onBlur={() => commitPrice(priceRange[0], priceRange[1])}
+                    onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+                    className={INPUT_CLASS}
                   />
-                  <span className="text-muted-foreground text-xs">—</span>
-                  <Input
-                    type="text"
-                    value={formatCurrency(priceRange[1])}
-                    readOnly
-                    className="h-8 text-xs text-center bg-muted/50 border-border/50"
+                  <span className="text-muted-foreground text-xs shrink-0">—</span>
+                  <NumericFormat
+                    value={priceRange[1]}
+                    thousandSeparator="."
+                    decimalSeparator=","
+                    prefix="R$ "
+                    decimalScale={0}
+                    placeholder="Máximo"
+                    onValueChange={({ floatValue }) => {
+                      if (floatValue == null) return;
+                      const clamped = Math.max(priceRange[0], Math.min(floatValue, metadata.ranges.price.max));
+                      setPriceRange([priceRange[0], clamped]);
+                    }}
+                    onBlur={() => commitPrice(priceRange[0], priceRange[1])}
+                    onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+                    className={INPUT_CLASS}
                   />
                 </div>
               </div>
@@ -223,22 +231,42 @@ export function FilterSidebar() {
                   step={1000}
                   value={kmRange}
                   onValueChange={(v) => setKmRange(v as [number, number])}
-                  onValueCommit={handleKmCommit}
+                  onValueCommit={(v) => commitKm(v[0], v[1])}
                   className="w-full"
                 />
                 <div className="flex items-center gap-2">
-                  <Input
-                    type="text"
-                    value={formatKm(kmRange[0])}
-                    readOnly
-                    className="h-8 text-xs text-center bg-muted/50 border-border/50"
+                  <NumericFormat
+                    value={kmRange[0]}
+                    thousandSeparator="."
+                    decimalSeparator=","
+                    suffix=" km"
+                    decimalScale={0}
+                    placeholder="Mínimo"
+                    onValueChange={({ floatValue }) => {
+                      if (floatValue == null) return;
+                      const clamped = Math.max(metadata.ranges.km.min, Math.min(floatValue, kmRange[1]));
+                      setKmRange([clamped, kmRange[1]]);
+                    }}
+                    onBlur={() => commitKm(kmRange[0], kmRange[1])}
+                    onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+                    className={INPUT_CLASS}
                   />
-                  <span className="text-muted-foreground text-xs">—</span>
-                  <Input
-                    type="text"
-                    value={formatKm(kmRange[1])}
-                    readOnly
-                    className="h-8 text-xs text-center bg-muted/50 border-border/50"
+                  <span className="text-muted-foreground text-xs shrink-0">—</span>
+                  <NumericFormat
+                    value={kmRange[1]}
+                    thousandSeparator="."
+                    decimalSeparator=","
+                    suffix=" km"
+                    decimalScale={0}
+                    placeholder="Máximo"
+                    onValueChange={({ floatValue }) => {
+                      if (floatValue == null) return;
+                      const clamped = Math.max(kmRange[0], Math.min(floatValue, metadata.ranges.km.max));
+                      setKmRange([kmRange[0], clamped]);
+                    }}
+                    onBlur={() => commitKm(kmRange[0], kmRange[1])}
+                    onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+                    className={INPUT_CLASS}
                   />
                 </div>
               </div>
@@ -258,22 +286,38 @@ export function FilterSidebar() {
                   step={1}
                   value={yearRange}
                   onValueChange={(v) => setYearRange(v as [number, number])}
-                  onValueCommit={handleYearCommit}
+                  onValueCommit={(v) => commitYear(v[0], v[1])}
                   className="w-full"
                 />
                 <div className="flex items-center gap-2">
-                  <Input
-                    type="text"
-                    value={String(yearRange[0])}
-                    readOnly
-                    className="h-8 text-xs text-center bg-muted/50 border-border/50"
+                  <NumericFormat
+                    value={yearRange[0]}
+                    decimalScale={0}
+                    allowNegative={false}
+                    placeholder="Mínimo"
+                    onValueChange={({ floatValue }) => {
+                      if (floatValue == null) return;
+                      const clamped = Math.max(metadata.ranges.year.min, Math.min(floatValue, yearRange[1]));
+                      setYearRange([clamped, yearRange[1]]);
+                    }}
+                    onBlur={() => commitYear(yearRange[0], yearRange[1])}
+                    onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+                    className={INPUT_CLASS}
                   />
-                  <span className="text-muted-foreground text-xs">—</span>
-                  <Input
-                    type="text"
-                    value={String(yearRange[1])}
-                    readOnly
-                    className="h-8 text-xs text-center bg-muted/50 border-border/50"
+                  <span className="text-muted-foreground text-xs shrink-0">—</span>
+                  <NumericFormat
+                    value={yearRange[1]}
+                    decimalScale={0}
+                    allowNegative={false}
+                    placeholder="Máximo"
+                    onValueChange={({ floatValue }) => {
+                      if (floatValue == null) return;
+                      const clamped = Math.max(yearRange[0], Math.min(floatValue, metadata.ranges.year.max));
+                      setYearRange([yearRange[0], clamped]);
+                    }}
+                    onBlur={() => commitYear(yearRange[0], yearRange[1])}
+                    onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+                    className={INPUT_CLASS}
                   />
                 </div>
               </div>
@@ -283,29 +327,26 @@ export function FilterSidebar() {
           {/* ─── Sources ─────────────────────────────────────────── */}
           <AccordionItem value="sources" className="border-border/50">
             <AccordionTrigger className="text-sm font-medium py-3 hover:no-underline">
-              Portais
-              {store.sources.length > 0 && (
-                <span className="ml-2 rounded-full bg-primary/20 px-2 py-0.5 text-[10px] font-semibold text-primary">
-                  {store.sources.length}
-                </span>
-              )}
+              <div className="flex">
+                Portais
+                {store.sources.length > 0 && (
+                  <span className="ml-2 rounded-full bg-primary/20 px-2 py-0.5 text-[10px] font-semibold text-primary">
+                    {store.sources.length}
+                  </span>
+                )}
+              </div>
             </AccordionTrigger>
             <AccordionContent>
               <div className="space-y-2 pt-1">
                 {metadata.sources.map((source) => (
-                  <label
-                    key={source}
-                    className="flex items-center gap-2.5 cursor-pointer group"
-                  >
+                  <label key={source} className="flex items-center gap-2.5 cursor-pointer group">
                     <Checkbox
                       checked={store.sources.includes(source)}
                       onCheckedChange={(checked) => {
                         if (checked) {
                           store.setSources([...store.sources, source]);
                         } else {
-                          store.setSources(
-                            store.sources.filter((s) => s !== source)
-                          );
+                          store.setSources(store.sources.filter((s) => s !== source));
                         }
                       }}
                       className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"

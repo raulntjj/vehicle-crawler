@@ -84,23 +84,27 @@ function PriceChart({ history }: { history: PriceHistoryEntry[] }) {
   );
 }
 
+function DialogSkeleton() {
+  return (
+    <div className="space-y-4 py-4">
+      <Skeleton className="h-6 w-3/4" />
+      <Skeleton className="h-8 w-40" />
+      <div className="grid grid-cols-2 gap-4">
+        <Skeleton className="h-16" />
+        <Skeleton className="h-16" />
+      </div>
+      <Skeleton className="h-32 w-full" />
+    </div>
+  )
+}
+
 export function VehicleDetailDialog({ vehicleId, onClose }: VehicleDetailDialogProps) {
   const { data: vehicle, isLoading } = useVehicleDetail(vehicleId);
 
   return (
     <Dialog open={vehicleId !== null} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-[560px] bg-card border-border/50 max-h-[90vh] overflow-y-auto">
-        {isLoading ? (
-          <div className="space-y-4 py-4">
-            <Skeleton className="h-6 w-3/4" />
-            <Skeleton className="h-8 w-40" />
-            <div className="grid grid-cols-2 gap-4">
-              <Skeleton className="h-16" />
-              <Skeleton className="h-16" />
-            </div>
-            <Skeleton className="h-32 w-full" />
-          </div>
-        ) : vehicle ? (
+        {isLoading ? <DialogSkeleton /> : vehicle ? (
           <>
             <DialogHeader>
               <div className="flex items-start justify-between gap-3">
@@ -108,7 +112,6 @@ export function VehicleDetailDialog({ vehicleId, onClose }: VehicleDetailDialogP
                   <p className="text-xs font-medium text-primary uppercase tracking-wider mb-1">{vehicle.brand}</p>
                   <DialogTitle className="text-lg font-bold leading-snug">{vehicle.title}</DialogTitle>
                 </div>
-                <Badge variant="secondary" className="text-[10px] uppercase tracking-wider shrink-0 bg-secondary/50">{vehicle.source}</Badge>
               </div>
             </DialogHeader>
 

@@ -17,8 +17,7 @@ export function VehicleCard({ vehicle, onClick, index }: VehicleCardProps) {
       className="group cursor-pointer overflow-hidden border-border/50 bg-card hover:border-primary/40 transition-all duration-300 hover:shadow-lg hover:shadow-primary/5 animate-fade-in-up"
       style={{ animationDelay: `${index * 50}ms` }}
     >
-      {/* <div className="h-1.5 w-full bg-gradient-to-r from-primary/60 via-primary to-primary/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300" /> */}
-      <CardContent className="p-5">
+      <CardContent className="px-5">
         <div className="flex items-start justify-between gap-2 mb-3">
           <div className="min-w-0 flex-1">
             <p className="text-xs font-medium text-primary uppercase tracking-wider mb-1">{vehicle.brand}</p>
