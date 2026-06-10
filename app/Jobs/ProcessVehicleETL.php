@@ -18,7 +18,7 @@ class ProcessVehicleETL implements ShouldQueue
 
     public int $tries = 3;
 
-    private array $rawData;
+    public array $rawData;
 
     /**
      * @param array<string, string> $rawData

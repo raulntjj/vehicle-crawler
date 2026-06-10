@@ -3,8 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Services\Crawlers\CrawlerManager;
-use App\Services\Crawlers\Contracts\VehicleCrawlerInterface;
-use App\Jobs\ProcessVehicleETL;
+use App\Jobs\CrawlPortalJob;
 use Illuminate\Console\Command;
 use InvalidArgumentException;
 
@@ -17,85 +16,52 @@ class CrawlVehiclesCommand extends Command
      * @var string
      */
     protected $signature = 'crawl:vehicles
-                            {portal : Identificador do portal (ex: "mobiauto")}
+                            {portal? : Identificador do portal opcional (ex: "mobiauto")}
                             {keyword? : Termo de busca opcional (se vazio, busca todas as marcas)}';
 
     /**
      * @var string
      */
-    protected $description = 'Extrai anúncios de veículos de um portal e os envia para a fila';
+    protected $description = 'Extrai anúncios de veículos de portais e os envia para a fila';
 
     /**
      * Executa o comando.
      */
     public function handle(CrawlerManager $manager): int
     {
-        $portal  = (string) $this->argument('portal');
+        $portalInput = $this->argument('portal') ? (string) $this->argument('portal') : null;
         $keyword = $this->argument('keyword') ? (string) $this->argument('keyword') : null;
 
-        try {
-            $crawler = $manager->driver($portal);
-        } catch (InvalidArgumentException $e) {
-            $this->error("❌ Erro: " . $e->getMessage());
+        $availablePortals = $manager->getAvailableDrivers();
+
+        if ($portalInput !== null) {
+            try {
+                // Valida se o portal é suportado
+                $manager->driver($portalInput);
+                $portals = [strtolower(trim($portalInput))];
+            } catch (InvalidArgumentException $e) {
+                $this->error("❌ Erro: " . $e->getMessage());
+                return Command::FAILURE;
+            }
+        } else {
+            $portals = $availablePortals;
+        }
+
+        if (empty($portals)) {
+            $this->error("❌ Nenhum portal disponível para extração.");
             return Command::FAILURE;
         }
 
-        if ($keyword !== null) {
-            $this->info("🔍 Buscando no portal [{$portal}] por: \"{$keyword}\"...");
-            $this->newLine();
-            $this->crawlAndDispatch($crawler, $keyword);
-        } else {
-            $brands = config('crawler.brands', []);
-
-            if (empty($brands)) {
-                $this->error("❌ Nenhuma marca configurada em config/crawler.php");
-                return Command::FAILURE;
-            }
-
-            $this->info("🔍 Buscando todas as (" . count($brands) . ") marcas configuradas no portal [{$portal}]...");
-            $this->newLine();
-
-            $delay = (int) config('crawler.delay_between_brands', 2);
-
-            foreach ($brands as $index => $brand) {
-                $this->info("👉 Extraindo marca: [{$brand}] (" . ($index + 1) . "/" . count($brands) . ")...");
-                $this->crawlAndDispatch($crawler, $brand);
-
-                if ($index < count($brands) - 1 && $delay > 0) {
-                    $this->line("⏱️  Aguardando {$delay} segundos antes da próxima marca...");
-                    $this->newLine();
-                    sleep($delay);
-                }
-            }
-        }
-
-        $this->info('🚀 Processo de extração concluído.');
-        return Command::SUCCESS;
-    }
-
-    /**
-     * Executa a busca de veículos para uma palavra-chave e despacha os Jobs.
-     */
-    private function crawlAndDispatch(VehicleCrawlerInterface $crawler, string $keyword): void
-    {
-        $vehicles = $crawler->crawl($keyword);
-
-        if (empty($vehicles)) {
-            $this->warn("⚠️  Nenhum veículo encontrado para \"{$keyword}\".");
-            $this->newLine();
-            return;
-        }
-
-        $this->info("📦 " . count($vehicles) . " veículo(s) encontrado(s). Despachando para a fila...");
+        $this->info("🔍 Agendando extração para os portais: " . implode(', ', $portals) . "...");
         $this->newLine();
 
-        foreach ($vehicles as $vehicle) {
-            ProcessVehicleETL::dispatch($vehicle->toArray())->onQueue('etl-vehicles');
-
-            $this->line("  ✅ [{$vehicle->source}::{$vehicle->externalId}] {$vehicle->title}");
-            $this->line("     Preço: {$vehicle->price} | KM: {$vehicle->km} | Ano: {$vehicle->year}");
-            $this->newLine();
+        foreach ($portals as $portal) {
+            CrawlPortalJob::dispatch($portal, $keyword)->onQueue('crawler-portals');
+            $this->line("👉 Portal [{$portal}] despachado para a fila (crawler-portals)");
         }
+
+        $this->newLine();
+        $this->info('🚀 Todos os portais foram agendados com sucesso.');
+        return Command::SUCCESS;
     }
 }
-

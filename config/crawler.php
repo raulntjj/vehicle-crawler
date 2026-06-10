@@ -45,13 +45,16 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Localização padrão para busca de anúncios
+    | Localizações padrão para busca de anúncios
     |--------------------------------------------------------------------------
     |
-    | Define o estado e cidade padrão (slug no formato "uf-cidade") para
+    | Define os estados e cidades padrão (slugs no formato "uf-cidade") para
     | as requisições de crawler. Ex: "sp-sao-paulo", "mg-belo-horizonte".
     |
     */
-    'default_location' => 'mg-belo-horizonte',
+    'default_locations' => [
+        'mg-belo-horizonte',
+        'sp-sao-paulo',
+    ],
 ];
 

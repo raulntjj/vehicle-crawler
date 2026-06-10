@@ -51,7 +51,7 @@ services:
         condition: service_started
     environment:
       - APP_ENV=local
-    command: ["php", "artisan", "queue:work", "rabbitmq", "--queue=etl-vehicles", "--tries=3", "--timeout=60", "--sleep=3"]
+    command: ["php", "artisan", "queue:work", "rabbitmq", "--queue=etl-vehicles,crawler-brands,crawler-locations,crawler-portals", "--tries=3", "--timeout=60", "--sleep=3"]
     networks:
       - crawlers-network
 

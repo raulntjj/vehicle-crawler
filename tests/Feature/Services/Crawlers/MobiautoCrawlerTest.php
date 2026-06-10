@@ -77,6 +77,7 @@ class MobiautoCrawlerTest extends TestCase
             'www.mobiauto.com.br/comprar/carros/*' => Http::response($mockHtml, 200)
         ]);
 
+        config(['crawler.default_locations' => ['sp-sao-paulo']]);
         $results = $this->crawler->crawl('Honda');
 
         $this->assertCount(2, $results);

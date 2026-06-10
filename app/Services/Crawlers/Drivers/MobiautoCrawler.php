@@ -25,10 +25,10 @@ class MobiautoCrawler implements VehicleCrawlerInterface
     /**
      * @return RawVehicleData[]
      */
-    public function crawl(string $keyword): array
+    public function crawl(string $keyword, ?string $location = null): array
     {
         try {
-            $rawDeals = $this->fetchRawDeals($keyword);
+            $rawDeals = $this->fetchRawDeals($keyword, $location);
         } catch (ConnectionException $e) {
             Log::error('[MobiautoCrawler] Falha de conexão', [
                 'keyword' => $keyword,
@@ -52,9 +52,12 @@ class MobiautoCrawler implements VehicleCrawlerInterface
      * @return array<int, array<string, mixed>>
      * @throws ConnectionException
      */
-    private function fetchRawDeals(string $keyword): array
+    private function fetchRawDeals(string $keyword, ?string $location = null): array
     {
-        $location = config('crawler.default_location', 'sp-sao-paulo');
+        if (empty($location)) {
+            $locations = config('crawler.default_locations', ['sp-sao-paulo']);
+            $location = reset($locations);
+        }
         $slugBrand = str(strtolower($keyword))->slug()->value();
         
         $url = self::BASE_URL . "/{$location}/{$slugBrand}";

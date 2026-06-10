@@ -40,5 +40,15 @@ class CrawlerManager
 
         return app($this->drivers[$name]);
     }
+
+    /**
+     * Retorna a lista de drivers (portais) suportados.
+     *
+     * @return array<string>
+     */
+    public function getAvailableDrivers(): array
+    {
+        return array_keys($this->drivers);
+    }
 }
 
