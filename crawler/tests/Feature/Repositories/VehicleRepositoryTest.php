@@ -1,10 +1,10 @@
 <?php
 
-namespace Tests\Feature\Services\ETL;
+namespace Tests\Feature\Repositories;
 
 use App\Models\PriceHistory;
 use App\Models\Vehicle;
-use App\Services\ETL\VehicleRepository;
+use App\Repositories\VehicleRepository;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -81,5 +81,4 @@ class VehicleRepositoryTest extends TestCase
 
         $this->assertEquals(2, PriceHistory::where('vehicle_id', $vehicle1->id)->count());
     }
-
 }

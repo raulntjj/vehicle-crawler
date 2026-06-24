@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Services\ETL;
+namespace App\Repositories;
 
 use App\Models\PriceHistory;
 use App\Models\Vehicle;
-use App\Services\ETL\Contracts\VehicleRepositoryInterface;
+use App\Repositories\Contracts\VehicleRepositoryInterface;
 use Illuminate\Support\Facades\Log;
 
 class VehicleRepository implements VehicleRepositoryInterface

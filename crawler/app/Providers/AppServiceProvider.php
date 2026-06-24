@@ -2,11 +2,13 @@
 
 namespace App\Providers;
 
-use App\Services\ETL\Contracts\VehicleETLInterface;
-use App\Services\ETL\Contracts\VehicleRepositoryInterface;
+use App\Repositories\BrandRepository;
+use App\Repositories\Contracts\BrandRepositoryInterface;
+use App\Repositories\Contracts\RawVehicleRepositoryInterface;
+use App\Repositories\Contracts\VehicleRepositoryInterface;
+use App\Repositories\RawVehicleRepository;
+use App\Repositories\VehicleRepository;
 use App\Services\ETL\Contracts\VehicleTransformerInterface;
-use App\Services\ETL\VehicleETLService;
-use App\Services\ETL\VehicleRepository;
 use App\Services\ETL\VehicleTransformer;
 use Illuminate\Support\ServiceProvider;
 
@@ -17,9 +19,13 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        $this->app->bind(VehicleETLInterface::class, VehicleETLService::class);
-        $this->app->bind(VehicleTransformerInterface::class, VehicleTransformer::class);
+        // Repositories
+        $this->app->bind(BrandRepositoryInterface::class, BrandRepository::class);
+        $this->app->bind(RawVehicleRepositoryInterface::class, RawVehicleRepository::class);
         $this->app->bind(VehicleRepositoryInterface::class, VehicleRepository::class);
+
+        // ETL Services
+        $this->app->bind(VehicleTransformerInterface::class, VehicleTransformer::class);
     }
 
     /**
@@ -30,4 +36,3 @@ class AppServiceProvider extends ServiceProvider
         //
     }
 }
-

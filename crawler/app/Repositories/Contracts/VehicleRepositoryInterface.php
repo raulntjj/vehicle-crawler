@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services\ETL\Contracts;
+namespace App\Repositories\Contracts;
 
 use App\Models\Vehicle;
 

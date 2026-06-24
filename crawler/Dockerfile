@@ -1,50 +1,52 @@
-###############################################################################
-# Vehicle Crawler ETL — Dockerfile
-# PHP 8.4 CLI com extensões para Laravel + RabbitMQ + PostgreSQL
-###############################################################################
-
 FROM php:8.4-cli-alpine
 
 # ---------------------------------------------------------------------------
-# Dependências de sistema
+# Dependências de sistema básicas
 # ---------------------------------------------------------------------------
 RUN apk add --no-cache \
-    bash \
-    git \
-    unzip \
-    curl \
-    libpq-dev \
-    linux-headers \
-    $PHPIZE_DEPS
-
+bash \
+git \
+unzip \
+curl \
+supervisor
+        
 # ---------------------------------------------------------------------------
-# Extensões PHP necessárias
+# Extensões PHP
 # ---------------------------------------------------------------------------
-RUN docker-php-ext-install \
+COPY --from=mlocati/php-extension-installer /usr/bin/install-php-extensions /usr/local/bin/
+RUN install-php-extensions \
     pdo \
     pdo_pgsql \
     pgsql \
     sockets \
     bcmath \
-    pcntl
+    pcntl \
+    mongodb \
+    amqp \
+    redis
 
 # ---------------------------------------------------------------------------
-# Composer (cópia do binário da imagem oficial)
+# Composer
 # ---------------------------------------------------------------------------
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
+# ---------------------------------------------------------------------------
+RUN mkdir -p /var/log/supervisor /etc/supervisor/conf.d
+COPY supervisor/supervisord.conf /etc/supervisor/supervisord.conf
+COPY supervisor/worker.conf /etc/supervisor/conf.d/worker.conf
+COPY supervisor/scheduler.conf /etc/supervisor/conf.d/scheduler.conf
 
 # ---------------------------------------------------------------------------
 # Diretório de trabalho
 # ---------------------------------------------------------------------------
 WORKDIR /var/www/html
 
-# ---------------------------------------------------------------------------
-# Em desenvolvimento, os arquivos são montados via volume no docker-compose.
-# Em produção, descomente as linhas abaixo:
-# ---------------------------------------------------------------------------
-# COPY . .
-# RUN composer install --no-interaction --no-progress --optimize-autoloader --no-dev
-# RUN chmod -R 775 storage bootstrap/cache
+# Garantir que a estrutura de pastas do Laravel e dos workers exista com as permissões corretas
+RUN mkdir -p storage/logs/workers \
+             storage/framework/cache/data \
+             storage/framework/sessions \
+             storage/framework/views \
+             bootstrap/cache \
+    && chmod -R 775 storage bootstrap/cache
 
-# Mantém o container rodando (será sobrescrito no docker-compose)
 CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]

@@ -114,6 +114,26 @@ return [
             // 'trust_server_certificate' => env('DB_TRUST_SERVER_CERTIFICATE', 'false'),
         ],
 
+        /*
+        |----------------------------------------------------------------------
+        | MongoDB — Staging Area / Data Lake
+        |----------------------------------------------------------------------
+        | Conexão utilizada para armazenar os dados brutos não-estruturados
+        | vindos do Scraping antes do pipeline de Transform & Load.
+        |----------------------------------------------------------------------
+        */
+        'mongodb' => [
+            'driver' => 'mongodb',
+            'host' => env('MONGO_HOST', '127.0.0.1'),
+            'port' => (int) env('MONGO_PORT', 27017),
+            'database' => env('MONGO_DATABASE', 'raw_data_lake'),
+            'username' => env('MONGO_USERNAME', ''),
+            'password' => env('MONGO_PASSWORD', ''),
+            'options' => [
+                'appname' => 'vehicle-crawler',
+            ],
+        ],
+
     ],
 
     /*

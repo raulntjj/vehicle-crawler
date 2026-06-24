@@ -1,12 +1,6 @@
-###############################################################################
-# Vehicle Crawler ETL — Docker Compose
-# Serviços: crawler (app), worker, backend (api), rabbitmq, postgres
-###############################################################################
-
 services:
   # ---------------------------------------------------------------------------
-  # Crawler — Container PHP 8.4 com Laravel CLI
-  # Responsável por executar o comando `php artisan crawl:vehicles`
+  # Crawler — maestro
   # ---------------------------------------------------------------------------
   crawler:
     build:
@@ -22,16 +16,16 @@ services:
         condition: service_healthy
       postgres:
         condition: service_healthy
+      mongodb:
+        condition: service_healthy
     environment:
       - APP_ENV=local
-    # Mantém o container rodando para execução de comandos artisan
     command: ["tail", "-f", "/dev/null"]
     networks:
       - crawlers-network
 
   # ---------------------------------------------------------------------------
-  # Worker — Consome a fila etl-vehicles do RabbitMQ
-  # Container idêntico ao crawler, mas iniciado como queue worker
+  # Crawler Worker — Consome as filas do RabbitMQ via Supervisor
   # ---------------------------------------------------------------------------
   worker:
     build:
@@ -47,17 +41,18 @@ services:
         condition: service_healthy
       postgres:
         condition: service_healthy
+      mongodb:
+        condition: service_healthy
       crawler:
         condition: service_started
     environment:
       - APP_ENV=local
-    command: ["php", "artisan", "queue:work", "rabbitmq", "--queue=etl-vehicles,crawler-brands,crawler-locations,crawler-portals", "--tries=3", "--timeout=60", "--sleep=3"]
+    command: ["/usr/bin/supervisord", "-n", "-c", "/etc/supervisor/supervisord.conf"]
     networks:
       - crawlers-network
 
   # ---------------------------------------------------------------------------
   # Backend — BFF Catalog REST API
-  # Disponível em http://localhost:8080
   # ---------------------------------------------------------------------------
   backend:
     build:
@@ -79,10 +74,7 @@ services:
       - crawlers-network
 
   # ---------------------------------------------------------------------------
-  # Frontend — Next.js 16 (App Router) — DEV com hot-reload
-  # Disponível em http://localhost:3000
-  # O código-fonte do host é montado no container — alterações são refletidas
-  # instantaneamente via Fast Refresh do Next.js.
+  # Frontend — Next.js 16
   # ---------------------------------------------------------------------------
   frontend:
     build:
@@ -106,15 +98,14 @@ services:
 
   # ---------------------------------------------------------------------------
   # RabbitMQ — Broker de Mensageria
-  # Management UI disponível em http://localhost:15672 (guest/guest)
   # ---------------------------------------------------------------------------
   rabbitmq:
     image: rabbitmq:3-management-alpine
     container_name: rabbitmq
     restart: unless-stopped
     ports:
-      - "5672:5672" # AMQP
-      - "15672:15672" # Management UI
+      - "5672"
+      - "15672"
     environment:
       RABBITMQ_DEFAULT_USER: guest
       RABBITMQ_DEFAULT_PASS: guest
@@ -129,6 +120,27 @@ services:
       - crawlers-network
 
   # ---------------------------------------------------------------------------
+  # MongoDB — Staging Area / Data Lake de dados brutos não-estruturados
+  # ---------------------------------------------------------------------------
+  mongodb:
+    image: mongo:7.0
+    container_name: mongodb
+    restart: unless-stopped
+    ports:
+      - "27017"
+    environment:
+      MONGO_INITDB_DATABASE: raw_data_lake
+    volumes:
+      - mongodb_data:/data/db
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - crawlers-network
+
+  # ---------------------------------------------------------------------------
   # PostgreSQL — Banco de Dados Relacional
   # ---------------------------------------------------------------------------
   postgres:
@@ -136,7 +148,7 @@ services:
     container_name: postgres
     restart: unless-stopped
     ports:
-      - "5432:5432"
+      - "5432"
     environment:
       POSTGRES_DB: web_crawlers
       POSTGRES_USER: crawler
@@ -151,13 +163,36 @@ services:
     networks:
       - crawlers-network
 
+  # ---------------------------------------------------------------------------
+  # Redis — Camada de Cache (utilizado estritamente pelo backend)
+  # ---------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    restart: unless-stopped
+    ports:
+      - "6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - crawlers-network
+
 # ---------------------------------------------------------------------------
 # Volumes persistentes
 # ---------------------------------------------------------------------------
 volumes:
   rabbitmq_data:
     driver: local
+  mongodb_data:
+    driver: local
   postgres_data:
+    driver: local
+  redis_data:
     driver: local
 
 # ---------------------------------------------------------------------------

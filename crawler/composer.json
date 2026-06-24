@@ -11,6 +11,7 @@
         "laravel/tinker": "^3.0",
         "symfony/css-selector": "^8.1",
         "symfony/dom-crawler": "^8.1",
+        "mongodb/laravel-mongodb": "^5.0",
         "vladimir-yuldashev/laravel-queue-rabbitmq": "^15.0"
     },
     "require-dev": {

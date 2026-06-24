@@ -2,8 +2,9 @@
 
 namespace App\Console\Commands;
 
+use App\Jobs\CrawlVehicles;
+use App\Repositories\Contracts\BrandRepositoryInterface;
 use App\Services\Crawlers\CrawlerManager;
-use App\Jobs\CrawlPortalJob;
 use Illuminate\Console\Command;
 use InvalidArgumentException;
 
@@ -27,7 +28,7 @@ class CrawlVehiclesCommand extends Command
     /**
      * Executa o comando.
      */
-    public function handle(CrawlerManager $manager): int
+    public function handle(CrawlerManager $manager, BrandRepositoryInterface $brandRepository): int
     {
         $portalInput = $this->argument('portal') ? (string) $this->argument('portal') : null;
         $keyword = $this->argument('keyword') ? (string) $this->argument('keyword') : null;
@@ -56,7 +57,7 @@ class CrawlVehiclesCommand extends Command
         $this->newLine();
 
         foreach ($portals as $portal) {
-            CrawlPortalJob::dispatch($portal, $keyword)->onQueue('crawler-portals');
+            CrawlVehicles::dispatchForPortal($portal, $keyword, $brandRepository);
             $this->line("👉 Portal [{$portal}] despachado para a fila (crawler-portals)");
         }
 
