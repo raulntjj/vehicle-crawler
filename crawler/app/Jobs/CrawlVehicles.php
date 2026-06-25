@@ -72,11 +72,48 @@ class CrawlVehicles implements ShouldQueue
 
             foreach ($vehicles as $vehicle) {
                 $rawData = $vehicle->toArray();
-
-                // Despeja o JSON bruto no MongoDB (Staging Area / Data Lake)
-                $mongoId = $rawVehicleRepository->store($rawData);
-
                 $externalId = $rawData['external_id'] ?? 'unknown';
+                $source = $rawData['source'] ?? 'unknown';
+
+                // Verifica se já temos registro deste veículo no MongoDB
+                $existing = $rawVehicleRepository->findByExternalIdAndSource($externalId, $source);
+                $hash = md5(json_encode($rawData));
+
+                if ($existing !== null) {
+                    $existingHash = $existing['hash'] ?? '';
+                    $existingStatus = $existing['status'] ?? 'pending';
+
+                    // Se os dados não mudaram e o status for 'processed' ou 'pending', ignoramos o processamento
+                    if ($existingHash === $hash && in_array($existingStatus, ['processed', 'pending'], true)) {
+                        Log::info("[CrawlVehicles] Veículo ignorado (sem alterações ou processamento em fila)", [
+                            'external_id' => $externalId,
+                            'status'      => $existingStatus,
+                        ]);
+                        continue;
+                    }
+
+                    // Se mudou ou falhou, atualizamos os dados e marcamos como 'pending'
+                    $rawData['hash'] = $hash;
+                    $rawData['status'] = 'pending';
+                    $mongoId = (string) ($existing['id'] ?? $existing['_id'] ?? '');
+                    $rawVehicleRepository->update($mongoId, $rawData);
+
+                    Log::info("[CrawlVehicles] Veículo atualizado no MongoDB para reprocessamento", [
+                        'external_id' => $externalId,
+                        'mongo_id'    => $mongoId,
+                        'reason'      => $existingHash !== $hash ? 'dados_alterados' : 'retry_falha',
+                    ]);
+                } else {
+                    // Novo veículo
+                    $rawData['hash'] = $hash;
+                    $rawData['status'] = 'pending';
+                    $mongoId = $rawVehicleRepository->store($rawData);
+
+                    Log::info("[CrawlVehicles] Novo veículo cadastrado no MongoDB", [
+                        'external_id' => $externalId,
+                        'mongo_id'    => $mongoId,
+                    ]);
+                }
 
                 // Dispara o job de Transform & Load com a referência ao documento no Mongo
                 ProcessVehicles::dispatch($mongoId, $externalId)->onQueue('vehicles.process');

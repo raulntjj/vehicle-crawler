@@ -44,5 +44,46 @@ class RawVehicleRepository implements RawVehicleRepositoryInterface
 
         return (array) $document;
     }
+
+    /**
+     * Busca o documento mais recente de um veículo pelo external_id e portal de origem (source).
+     */
+    public function findByExternalIdAndSource(string $externalId, string $source): ?array
+    {
+        $document = DB::connection('mongodb')
+            ->table(self::COLLECTION)
+            ->where('external_id', $externalId)
+            ->where('source', $source)
+            ->orderBy('_id', 'desc')
+            ->first();
+
+        if ($document === null) {
+            return null;
+        }
+
+        return (array) $document;
+    }
+
+    /**
+     * Atualiza os dados brutos e status de um documento específico no MongoDB.
+     */
+    public function update(string $mongoId, array $rawData): void
+    {
+        DB::connection('mongodb')
+            ->table(self::COLLECTION)
+            ->where('_id', $mongoId)
+            ->update($rawData);
+    }
+
+    /**
+     * Atualiza apenas o status de processamento de um documento no MongoDB.
+     */
+    public function updateStatus(string $mongoId, string $status): void
+    {
+        DB::connection('mongodb')
+            ->table(self::COLLECTION)
+            ->where('_id', $mongoId)
+            ->update(['status' => $status]);
+    }
 }
 

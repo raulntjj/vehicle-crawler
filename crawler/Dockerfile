@@ -4,11 +4,15 @@ FROM php:8.4-cli-alpine
 # Dependências de sistema básicas
 # ---------------------------------------------------------------------------
 RUN apk add --no-cache \
-bash \
-git \
-unzip \
-curl \
-supervisor
+    bash \
+    git \
+    unzip \
+    curl \
+    supervisor \
+    postgresql-dev \
+    rabbitmq-c-dev \
+    autoconf \
+    build-base
         
 # ---------------------------------------------------------------------------
 # Extensões PHP
@@ -24,6 +28,8 @@ RUN install-php-extensions \
     mongodb \
     amqp \
     redis
+
+RUN apk del autoconf build-base
 
 # ---------------------------------------------------------------------------
 # Composer

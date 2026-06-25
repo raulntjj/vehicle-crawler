@@ -65,9 +65,26 @@ class ProcessVehicles implements ShouldQueue
         $transformedData = $transformer->transform($rawData);
         $repository->save($transformedData);
 
+        // Atualiza o status para processed no MongoDB
+        $rawVehicleRepository->updateStatus($this->mongoId, 'processed');
+
         Log::info("[ProcessVehicles] ✅ Veículo processado com sucesso", [
             'mongo_id'    => $this->mongoId,
             'external_id' => $this->externalId,
         ]);
+    }
+
+    /**
+     * O job falhou definitivamente (todas as tentativas falharam).
+     */
+    public function failed(\Throwable $exception): void
+    {
+        Log::error("[ProcessVehicles] ❌ Falha definitiva ao processar veículo no ETL", [
+            'mongo_id'    => $this->mongoId,
+            'external_id' => $this->externalId,
+            'error'       => $exception->getMessage(),
+        ]);
+
+        app(RawVehicleRepositoryInterface::class)->updateStatus($this->mongoId, 'failed');
     }
 }
