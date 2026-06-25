@@ -78,7 +78,7 @@ return [
         | RabbitMQ Connection
         |----------------------------------------------------------------------
         | Driver: vladimir-yuldashev/laravel-queue-rabbitmq
-        | Fila padrão: etl-vehicles (definida no .env)
+        | Fila padrão: portals.crawl (definida no .env)
         |----------------------------------------------------------------------
         */
         'rabbitmq' => [
@@ -92,7 +92,7 @@ return [
                     'vhost'    => env('RABBITMQ_VHOST', '/'),
                 ],
             ],
-            'queue'   => env('RABBITMQ_QUEUE', 'etl-vehicles'),
+            'queue'   => env('RABBITMQ_QUEUE', 'portals.crawl'),
             'options' => [
                 'exchange' => [
                     'name' => env('RABBITMQ_EXCHANGE_NAME'),

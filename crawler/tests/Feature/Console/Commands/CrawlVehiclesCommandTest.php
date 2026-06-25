@@ -23,7 +23,7 @@ class CrawlVehiclesCommandTest extends TestCase
 
         $this->artisan('crawl:vehicles mobiauto Honda')
             ->expectsOutputToContain('Agendando extração para os portais: mobiauto...')
-            ->expectsOutputToContain('👉 Portal [mobiauto] despachado para a fila (crawler-portals)')
+            ->expectsOutputToContain('👉 Portal [mobiauto] despachado para a fila (portals.crawl)')
             ->expectsOutputToContain('Todos os portais foram agendados com sucesso.')
             ->assertExitCode(0);
 

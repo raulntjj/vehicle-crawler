@@ -42,6 +42,11 @@ class VehicleTransformerTest extends TestCase
             'year_fabrication' => 2021,
             'year_model'       => 2022,
             'url'              => 'https://example.com/honda-civic-sport',
+            'images'           => null,
+            'doors'            => null,
+            'bodystyle'        => null,
+            'fuel'             => null,
+            'transmission'     => null,
         ], $transformed);
     }
 

@@ -13,19 +13,19 @@ Este documento descreve detalhadamente a arquitetura de dados e o fluxo de funci
 ### 1. Inicialização & Definição de Escopo (Trigger)
 * O processo começa quando o comando Artisan `php artisan crawl:vehicles` é acionado manualmente ou via cron (Task Scheduler).
 * O comando lê as marcas ativas do banco PostgreSQL (`BrandRepository`) e as localidades mapeadas na configuração do crawler.
-* O método `CrawlVehicles::dispatchForPortal` realiza a multiplicação de escopo: cria uma tarefa individual na fila do RabbitMQ (`crawler-portals`) para cada combinação de **`Portal × Localidade × Marca`**.
+* O método `CrawlVehicles::dispatchForPortal` realiza a multiplicação de escopo: cria uma tarefa individual na fila do RabbitMQ (`portals.crawl`) para cada combinação de **`Portal × Localidade × Marca`**.
 
 ### 2. Extração & Staging Area (Extract / Scraping)
-* O worker consome o job `CrawlVehicles` na fila `crawler-portals`.
+* O worker consome o job `CrawlVehicles` na fila `portals.crawl`.
 * O `CrawlerManager` instancia o driver específico para o portal alvo (ex: `MobiautoCrawler`).
 * É efetuada a requisição HTTP GET para coletar o HTML da página de anúncios do portal.
 * O parser extrai o bloco de dados estruturados em JSON contido na tag de renderização do NextJS (`<script id="__NEXT_DATA__">`).
 * Cada anúncio individual da resposta é convertido em um DTO (`RawVehicleData`) e persistido de forma imutável (JSON bruto) na collection `raw_vehicles` do **MongoDB (Data Lake / Staging Area)**.
 * Ao salvar, o identificador do MongoDB (`_id` do documento, convertido em string como `$mongoId`) é capturado.
-* O job finaliza despachando um novo job (`ProcessVehicles`) para a fila `etl-vehicles` com a referência `$mongoId`.
+* O job finaliza despachando um novo job (`ProcessVehicles`) para a fila `vehicles.process` com a referência `$mongoId`.
 
 ### 3. Transformação & Higienização (Transform)
-* O worker consome o job `ProcessVehicles` na fila `etl-vehicles`.
+* O worker consome o job `ProcessVehicles` na fila `vehicles.process`.
 * Ele recupera os dados brutos salvos no MongoDB utilizando o `$mongoId`.
 * Esses dados brutos são passados ao `VehicleTransformer`, que executa as seguintes regras de negócios e limpeza:
   * **Título:** Remove espaços em branco redundantes.

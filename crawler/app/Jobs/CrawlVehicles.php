@@ -79,7 +79,7 @@ class CrawlVehicles implements ShouldQueue
                 $externalId = $rawData['external_id'] ?? 'unknown';
 
                 // Dispara o job de Transform & Load com a referência ao documento no Mongo
-                ProcessVehicles::dispatch($mongoId, $externalId)->onQueue('etl-vehicles');
+                ProcessVehicles::dispatch($mongoId, $externalId)->onQueue('vehicles.process');
             }
         } catch (\Throwable $e) {
             Log::error("[CrawlVehicles] Erro na execução do crawler", [
@@ -112,7 +112,7 @@ class CrawlVehicles implements ShouldQueue
             if ($keyword !== null) {
                 // Keyword explícita — despacha apenas essa marca
                 static::dispatch($portal, $location, $keyword)
-                    ->onQueue('crawler-portals');
+                    ->onQueue('portals.crawl');
             } else {
                 // Busca todas as marcas ativas via repositório
                 $brands = $brandRepository->getActiveBrandNames();
@@ -124,7 +124,7 @@ class CrawlVehicles implements ShouldQueue
 
                 foreach ($brands as $index => $brand) {
                     $job = static::dispatch($portal, $location, $brand)
-                        ->onQueue('crawler-portals');
+                        ->onQueue('portals.crawl');
 
                     $delaySeconds = $index * $delay;
                     if ($delaySeconds > 0) {

@@ -58,7 +58,7 @@ class CrawlVehiclesCommand extends Command
 
         foreach ($portals as $portal) {
             CrawlVehicles::dispatchForPortal($portal, $keyword, $brandRepository);
-            $this->line("👉 Portal [{$portal}] despachado para a fila (crawler-portals)");
+            $this->line("👉 Portal [{$portal}] despachado para a fila (portals.crawl)");
         }
 
         $this->newLine();
