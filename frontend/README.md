@@ -1,36 +1,78 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 💻 Frontend (AutoCatálogo) — Interface Web
 
-## Getting Started
+Este diretório contém a interface do usuário (Frontend) do projeto **Vehicle Crawler**, construída como um catálogo de veículos moderno, rápido e responsivo. É uma aplicação desenvolvida com **React 19** e **Next.js 16**.
 
-First, run the development server:
+---
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## 🛠️ Tecnologias e Bibliotecas
+
+* **Next.js 16 (App Router)** & **React 19**: Estrutura moderna baseada em componentes, renderização otimizada e Client Components (`"use client"`) para alta interatividade.
+* **Zustand (v5)**: Gerenciamento de estado global no lado do cliente (controle unificado do termo de busca, filtros de marcas/fontes, intervalos numéricos de preço/ano/KM, ordenação e página atual). Utiliza `useShallow` para evitar re-renderizações desnecessárias.
+* **React Query / @tanstack/react-query (v5)**: Gerenciamento e cacheamento do estado de rede. Garante paginação e filtragem fluidas, com transições sem flicker (utilizando `placeholderData` para reter os resultados anteriores durante buscas de background).
+* **Axios (v1.18)**: Cliente HTTP configurado para se comunicar com as rotas do BFF.
+* **Tailwind CSS (v4)**: Framework utilitário de estilização para uma interface de alta fidelidade visual, com suporte nativo a modo escuro/claro e design responsivo.
+* **Embla Carousel (v8)**: Carrossel leve e flexível com suporte a transições suaves e autoplay, utilizado para exibir a galeria de imagens de cada anúncio.
+* **Lucide React**: Biblioteca de ícones vetoriais modernos.
+
+---
+
+## 🔍 Comunicação com o BFF (Rewrites/Proxy)
+
+Para contornar problemas de CORS (Cross-Origin Resource Sharing) em ambiente de desenvolvimento local, o Next.js está configurado (`next.config.ts`) para reescrever as requisições destinadas ao prefixo `/api/v1` diretamente para a URL do backend:
+
+```typescript
+// next.config.ts
+async rewrites() {
+  return [
+    {
+      source: "/api/v1/:path*",
+      destination: `${backendUrl}/api/:path*`,
+    },
+  ];
+}
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+O `backendUrl` é resolvido através da variável de ambiente `BACKEND_URL`, apontando para a API do Laravel.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 📁 Estrutura de Componentes
 
-## Learn More
+* **`components/catalog-page.tsx`**: O layout principal do catálogo que integra o cabeçalho, barra de busca, painel de filtros e grid de listagem.
+* **`components/filters/filter-sidebar.tsx`**: Painel lateral que busca dinamicamente os metadados do backend (`/api/filters/metadata`) para renderizar os intervalos de busca (preço, quilometragem, ano) e as opções de marcas/fontes sem valores hardcoded.
+* **`components/vehicles/vehicle-grid.tsx`**: Grid inteligente que lida com estados de carregamento (exibindo skeletons de carregamento), erros de comunicação ou telas de resultados vazios.
+* **`components/vehicles/vehicle-detail-dialog.tsx`**: Modal de detalhamento contendo informações técnicas detalhadas (carroceria, combustível, portas, câmbio), carrossel de fotos do veículo e o histórico de preços.
 
-To learn more about Next.js, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 🚀 Como Executar
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Pré-requisitos
+Certifique-se de que a API BFF (backend) esteja de pé para responder às requisições do catálogo.
 
-## Deploy on Vercel
+### Inicialização Manual (Sem Docker)
+1. Instale as dependências:
+   ```bash
+   npm install
+   ```
+2. Crie/Configure a variável de ambiente:
+   Crie um arquivo `.env` na raiz do diretório frontend informando o endereço do BFF:
+   ```env
+   BACKEND_URL=http://localhost:8000
+   ```
+3. Rode o servidor Next.js em modo de desenvolvimento:
+   ```bash
+   npm run dev
+   ```
+4. Acesse a aplicação no navegador em `http://localhost:3000`.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+---
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 📦 Build de Produção
+
+Para gerar o build estático otimizado e rodar a aplicação em produção:
+
+```bash
+npm run build
+npm run start
+```

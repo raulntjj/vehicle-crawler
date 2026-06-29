@@ -1,58 +1,88 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# 🚗 Vehicle Crawler — Centralizador do Projeto
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Este repositório contém a infraestrutura e os módulos do **Vehicle Crawler**, um sistema completo e multi-container voltado à extração automática de anúncios de veículos, processamento de dados (ETL), catalogação estruturada e exibição web responsiva.
 
-## About Laravel
+O projeto é dividido em três aplicações principais que rodam sob uma arquitetura de microsserviços local orquestrada pelo **Docker Compose**.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+---
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## 📁 Estrutura do Repositório
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+O projeto pai é composto pelos seguintes diretórios:
 
-## Learning Laravel
+* **[`crawler/`](file:///home/raulntjj/Repositories/vehicle-crawler/crawler/README.md)**: Aplicação CLI (Laravel) dedicada ao agendamento e execução de scrapers de veículos. Ela extrai os anúncios dos portais, realiza o controle de alterações e deduplica os dados no MongoDB.
+* **[`backend/`](file:///home/raulntjj/Repositories/vehicle-crawler/backend/README.md)**: BFF REST API (Laravel) que serve de camada de acesso aos dados, expondo rotas rápidas e filtráveis para busca e detalhamento de anúncios persistidos no PostgreSQL.
+* **[`frontend/`](file:///home/raulntjj/Repositories/vehicle-crawler/frontend/README.md)**: Painel web (Next.js 16/React 19) onde o catálogo é renderizado com filtros avançados dinâmicos e históricos de preços.
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+---
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+## 🗺️ Arquitetura do Sistema e Fluxo de Dados
 
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
+A arquitetura do projeto é orientada a eventos e desacoplada em etapas de extração, transformação e carga (ETL):
 
-## Agentic Development
+![Arquitetura de Dados](./crawler/docs/event-driven-etl-architecture.svg)
 
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+1. **Agendamento (Maestro)**: O container `crawler` agenda ou inicia manualmente buscas para combinações de `Portal × Localidade × Marca` enviando jobs `CrawlVehicles` para a fila `portals.crawl` do RabbitMQ.
+2. **Extração & Staging Area**: Os workers da fila `portals.crawl` buscam as páginas dos portais de destino (como a Mobiauto), obtêm os dados estruturados de hidratação do NextJS (`__NEXT_DATA__`) e salvam o payload JSON bruto no MongoDB (Staging Area).
+3. **Change Data Capture (CDC)**: A hash MD5 do anúncio é comparada. Se o anúncio for novo ou se os dados tiverem sofrido alteração, o Worker envia uma tarefa de processamento para a fila `vehicles.process`.
+4. **Transformação e Carga (ETL)**: O job `ProcessVehicles` consome a fila do RabbitMQ, recupera o anúncio do MongoDB, realiza a limpeza/transformação dos campos e persiste os dados consolidados no PostgreSQL. Caso o preço mude, um histórico é gravado na tabela de controle de preços.
+5. **Consumo Web**: O Next.js solicita dados ao BFF (Backend) utilizando requisições HTTP proxied (rewrites) para evitar problemas de CORS, exibindo feeds rápidos com estados de cache integrados.
+
+---
+
+## 🛠️ Tecnologias do Ecossistema
+
+### Bancos de Dados & Middleware:
+* **PostgreSQL (v16)**: Banco relacional contendo as tabelas de veículos, marcas e o histórico consolidado de preços.
+* **MongoDB (v7.0)**: Staging Area / Data Lake que armazena os registros originais imutáveis de anúncios brutos (JSON).
+* **RabbitMQ**: Broker de mensagens responsável por gerenciar as filas de extração (`portals.crawl`) e de processamento ETL (`vehicles.process`).
+* **Redis**: Camada de cache utilizada opcionalmente para otimizar as consultas da API.
+
+---
+
+## 🚀 Como Inicializar o Projeto (Docker Compose)
+
+O projeto está totalmente configurado para subir todos os serviços locais de forma unificada através do Docker Compose.
+
+### Passo 1: Configurar Variáveis de Ambiente
+Copie o arquivo `.env.example` para `.env` nos diretórios do **crawler** e do **backend**:
 
 ```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+cp crawler/.env.example crawler/.env
+cp backend/.env.example backend/.env
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+### Passo 2: Subir a Infraestrutura e Serviços
+Rode o comando do Compose no diretório raiz do projeto para fazer o build e iniciar todos os containers em segundo plano:
 
-## Contributing
+```bash
+docker compose up --build -d
+```
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+Este comando subirá os seguintes serviços:
+* `postgres`, `mongodb`, `redis`, `rabbitmq` (Bancos e Middleware).
+* `crawler` (Container de controle CLI).
+* `worker` (Serviço executando Supervisor para processar as filas do RabbitMQ).
+* `backend` (BFF API exposta localmente em `http://localhost:8080`).
+* `frontend` (Dashboard Next.js exposto localmente em `http://localhost:3002`).
 
-## Code of Conduct
+### Passo 3: Executar Migrações e Seeds de Marcas
+Popule a base de dados PostgreSQL executando as migrations e seeders iniciais dentro do container do `crawler`:
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+```bash
+docker compose exec crawler php artisan migrate --seed
+```
 
-## Security Vulnerabilities
+O comando de seed é fundamental para cadastrar e ativar as marcas de veículos (definidas em `config/crawler.php`) no banco de dados.
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+### Passo 4: Rodar o Scraper Manualmente
+Para testar a infraestrutura e rodar a carga inicial dos portais (extraindo e populando os bancos), execute o comando a partir do container `crawler`:
 
-## License
+```bash
+docker compose exec crawler php artisan crawl:vehicles
+```
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+Acompanhe o processamento do pipeline monitorando os logs do container worker:
+```bash
+docker compose logs -f worker
+```
